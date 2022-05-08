@@ -1,0 +1,15 @@
+# pytest files
+.pytest_cache
+
+# Jupyter files
+.ipynb_checkpoints
+
+# Run files
+nohup.out
+
+# VS code files
+.vscode
+launch.json
+
+# Other
+__pycache__
