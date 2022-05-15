@@ -13,28 +13,6 @@ class Preprocessor:
         self.prefix = prefix
         self.special_tokens_constants = special_tokens_constants
 
-    def merge_overlapping_intervals(self, intervals: List[Tuple[int, int]]) -> List[Tuple[int, int]]:
-        """
-        Merges overlapping / consecutive intervals.
-        See more details here https://leetcode.com/problems/merge-intervals
-        """
-
-        intervals = sorted(intervals, key=lambda x: x[0])
-
-        merged = []
-        for interval in intervals:
-            # if the list of merged intervals is empty or if the current
-            # interval does not overlap with the previous and it's not its consecutive, simply append it.
-            if not merged or merged[-1][1] + 1 < interval[0]:
-                merged.append(interval)
-            else:
-            # otherwise, there is overlap, so we merge the current and previous
-            # intervals.
-                merged[-1][1] = max(merged[-1][1], interval[1])
-
-        return merged
-
-
 
     def preprocess_input(self, source_text, highlighted_spans) -> str:
         """
@@ -47,7 +25,7 @@ class Preprocessor:
             highlighted_spans = json.loads(highlighted_spans)
 
         # We don't care about nested highlights / consecutive highlights
-        highlighted_spans = self.merge_overlapping_intervals(highlighted_spans)
+        highlighted_spans = merge_overlapping_intervals(highlighted_spans)
 
         for start, end in highlighted_spans:
             idx_to_tokens[start].append(self.special_tokens_constants['highlight_start'])
@@ -134,3 +112,25 @@ def convert_highlight_rows_to_document_highlights(doc_reader, highlight_rows: pd
     document_highlights_df = highlight_rows.groupby('documentFile').apply(handle_document_rows)
     # Flatten list of lists to a list
     return [document_highlight for document_highlights in document_highlights_df.to_list() for document_highlight in document_highlights]
+
+
+def merge_overlapping_intervals(intervals: List[Tuple[int, int]]) -> List[Tuple[int, int]]:
+    """
+    Merges overlapping / consecutive intervals.
+    See more details here https://leetcode.com/problems/merge-intervals
+    """
+
+    intervals = sorted(intervals, key=lambda x: x[0])
+
+    merged = []
+    for interval in intervals:
+        # if the list of merged intervals is empty or if the current
+        # interval does not overlap with the previous and it's not its consecutive, simply append it.
+        if not merged or merged[-1][1] + 1 < interval[0]:
+            merged.append(interval)
+        else:
+        # otherwise, there is overlap, so we merge the current and previous
+        # intervals.
+            merged[-1][1] = max(merged[-1][1], interval[1])
+
+    return merged

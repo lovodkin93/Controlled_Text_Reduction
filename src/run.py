@@ -32,6 +32,8 @@ from transformers import (
 from transformers.trainer_utils import get_last_checkpoint
 from transformers.utils import check_min_version, is_offline_mode
 from transformers.utils.versions import require_version
+from src.compute_metrics import compute_rouge_metrics
+from src.predictions_analyzer import PredictionsAnalyzer
 
 from src.preprocessor import Preprocessor, get_special_tokens_constants
 
@@ -302,19 +304,6 @@ def main():
     )
     logger.info(f"Training/evaluation parameters {training_args}")
 
-    is_t5_model = model_args.model_name_or_path in [
-        "t5-small",
-        "t5-base",
-        "t5-large",
-        "t5-3b",
-        "t5-11b",
-    ]
-    if data_args.source_prefix is None and is_t5_model:
-        logger.warning(
-            "You're running a t5 model but didn't provide a source prefix, which is the expected, e.g. with "
-            "`--source_prefix 'summarize: ' `"
-        )
-
     # Detecting last checkpoint.
     last_checkpoint = None
     if os.path.isdir(training_args.output_dir) and training_args.do_train and not training_args.overwrite_output_dir:
@@ -396,6 +385,19 @@ def main():
         revision=model_args.model_revision,
         use_auth_token=True if model_args.use_auth_token else None,
     )
+
+    is_t5_model = model_args.model_name_or_path in [
+        "t5-small",
+        "t5-base",
+        "t5-large",
+        "t5-3b",
+        "t5-11b",
+    ] or model.config.model_type == 't5'  # Necessary when loading model from directory
+    if data_args.source_prefix is None and is_t5_model:
+        logger.warning(
+            "You're running a t5 model but didn't provide a source prefix, which is the expected, e.g. with "
+            "`--source_prefix 'summarize: ' `"
+        )
 
     model.resize_token_embeddings(len(tokenizer))
 
@@ -622,16 +624,12 @@ def main():
         decoded_preds, decoded_labels = postprocess_text(
             decoded_preds, decoded_labels)
 
-        result = metric.compute(predictions=decoded_preds,
-                                references=decoded_labels, use_stemmer=True)
-        # Extract a few results from ROUGE
-        result = {key: value.mid.fmeasure *
-                  100 for key, value in result.items()}
+        result = compute_rouge_metrics(decoded_preds, decoded_labels, metric)
 
         prediction_lens = [np.count_nonzero(
             pred != tokenizer.pad_token_id) for pred in preds]
         result["gen_len"] = np.mean(prediction_lens)
-        result = {k: round(v, 4) for k, v in result.items()}
+
         return result
 
     # Initialize our Trainer
@@ -704,14 +702,7 @@ def main():
 
         if trainer.is_world_process_zero():
             if training_args.predict_with_generate:
-                predictions = tokenizer.batch_decode(
-                    predict_results.predictions, skip_special_tokens=True, clean_up_tokenization_spaces=True
-                )
-                predictions = [pred.strip() for pred in predictions]
-                output_prediction_file = os.path.join(
-                    training_args.output_dir, "generated_predictions.txt")
-                with open(output_prediction_file, "w") as writer:
-                    writer.write("\n".join(predictions))
+                PredictionsAnalyzer(tokenizer, training_args).write_predictions_to_file(predict_results.predictions, predict_dataset)
 
     kwargs = {"finetuned_from": model_args.model_name_or_path,
               "tasks": "summarization"}

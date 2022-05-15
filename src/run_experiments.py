@@ -1,4 +1,5 @@
-from src.run import main
+from src.run import main as seq_to_seq_main
+from src.simple_concatenation_baseline import main as simple_concatenation_main
 import pandas as pd
 import argparse
 from src.doc_reader import DocReader
@@ -35,4 +36,5 @@ def preprocess_highlight_rows_file():
 
 preprocess_highlight_rows_file()
 
-main()
+seq_to_seq_main()
+# simple_concatenation_main()
