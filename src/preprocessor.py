@@ -13,6 +13,29 @@ class Preprocessor:
         self.prefix = prefix
         self.special_tokens_constants = special_tokens_constants
 
+    def merge_overlapping_intervals(self, intervals: List[Tuple[int, int]]) -> List[Tuple[int, int]]:
+        """
+        Merges overlapping / consecutive intervals.
+        See more details here https://leetcode.com/problems/merge-intervals
+        """
+
+        intervals = sorted(intervals, key=lambda x: x[0])
+
+        merged = []
+        for interval in intervals:
+            # if the list of merged intervals is empty or if the current
+            # interval does not overlap with the previous and it's not its consecutive, simply append it.
+            if not merged or merged[-1][1] + 1 < interval[0]:
+                merged.append(interval)
+            else:
+            # otherwise, there is overlap, so we merge the current and previous
+            # intervals.
+                merged[-1][1] = max(merged[-1][1], interval[1])
+
+        return merged
+
+
+
     def preprocess_input(self, source_text, highlighted_spans) -> str:
         """
         Converts input to str
@@ -22,6 +45,10 @@ class Preprocessor:
         idx_to_tokens = defaultdict(list)
         if isinstance(highlighted_spans, str):
             highlighted_spans = json.loads(highlighted_spans)
+
+        # We don't care about nested highlights / consecutive highlights
+        highlighted_spans = self.merge_overlapping_intervals(highlighted_spans)
+
         for start, end in highlighted_spans:
             idx_to_tokens[start].append(self.special_tokens_constants['highlight_start'])
             idx_to_tokens[end].append(self.special_tokens_constants['highlight_end'])
@@ -83,7 +110,7 @@ def convert_row_spans_str_to_list_of_highlights(spans_str) -> List[Tuple[int, in
 
     return highlights
 
-def convert_highlight_rows_to_document_highlights(doc_reader, highlight_rows: pd.DataFrame) -> List[Tuple[str, str, list]]:
+def convert_highlight_rows_to_document_highlights(doc_reader, highlight_rows: pd.DataFrame) -> List[List[Tuple[str, str, list]]]:
     """
     Convert from multiple highlight rows (csv) to document highlights
     """
@@ -91,12 +118,19 @@ def convert_highlight_rows_to_document_highlights(doc_reader, highlight_rows: pd
     def handle_document_rows(doc_rows):
         any_row = doc_rows.iloc[0]
         doc = doc_reader.read_doc(any_row['topic'], any_row['documentFile'])
-        summary = doc_reader.read_summary(any_row['topic'], any_row['documentFile'])            
-        highlight_spans = doc_rows['docSpanOffsets'].apply(convert_row_spans_str_to_list_of_highlights)
-        flattened_highlight_spans = [span for spans in highlight_spans.to_list() for span in spans]
 
-        return doc, summary, flattened_highlight_spans
+        document_highlights = []
+        # Each topic is a summary
+        for topic in doc_rows['topic'].unique():
+            summary = doc_reader.read_summary(topic, any_row['documentFile'])
+            highlight_spans = doc_rows['docSpanOffsets'].apply(convert_row_spans_str_to_list_of_highlights)
+            flattened_highlight_spans = [span for spans in highlight_spans.to_list() for span in spans]
+
+            document_highlights.append((doc, summary, flattened_highlight_spans))
+
+        return document_highlights
 
 
-    document_highlights_df = highlight_rows.groupby('topic').apply(handle_document_rows)
-    return document_highlights_df.to_list()
+    document_highlights_df = highlight_rows.groupby('documentFile').apply(handle_document_rows)
+    # Flatten list of lists to a list
+    return [document_highlight for document_highlights in document_highlights_df.to_list() for document_highlight in document_highlights]
