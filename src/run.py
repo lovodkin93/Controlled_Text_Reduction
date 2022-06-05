@@ -12,6 +12,7 @@ import datasets
 import nltk  # Here to have a nice missing dependency error message early on
 import numpy as np
 from datasets import load_dataset, load_metric
+from tqdm import tqdm
 
 import transformers
 from filelock import FileLock
@@ -33,6 +34,7 @@ from transformers.trainer_utils import get_last_checkpoint
 from transformers.utils import check_min_version, is_offline_mode
 from transformers.utils.versions import require_version
 from src.compute_metrics import compute_rouge_metrics
+from src.freeze_embeds import freeze_embeds
 from src.predictions_analyzer import PredictionsAnalyzer
 
 from src.preprocessor import Preprocessor, get_special_tokens_constants
@@ -105,6 +107,26 @@ class ModelArguments:
             "help": "Whether to automatically resize the position embeddings if `max_source_length` exceeds "
             "the model's position embeddings."
         },
+    )
+    # NEW from original script
+    freeze_embeds: bool = field(
+        default=False
+    )
+    # NEW from original script
+    min_length: int = field(
+        default=None
+    )
+    # NEW from original script
+    length_penalty: float = field(
+        default=None
+    )
+    # NEW from original script
+    early_stopping: bool = field(
+        default=False
+    )
+    # NEW from original script
+    no_repeat_ngram_size: int = field(
+        default=None
     )
 
 
@@ -236,6 +258,15 @@ class DataTrainingArguments:
             "needs to be the target language token (Usually it is the target language token)"
         },
     )
+    # NEW from original script
+    add_global_attention: bool = field(
+        default=False
+    )
+    # NEW from original script
+    add_global_attention_on_highlights: bool = field(
+        default=False
+    )
+
 
     def __post_init__(self):
         if self.dataset_name is None and self.train_file is None and self.validation_file is None:
@@ -359,6 +390,11 @@ def main():
     # See more about loading any type of standard or custom dataset (from files, python dict, pandas DataFrame, etc) at
     # https://huggingface.co/docs/datasets/loading_datasets.html.
 
+    # NEW from original script (enables sending config from arguments, necessary for LED)
+    model_args_dict = {}
+    model_args_dict.update(model_args.__dict__)
+    model_args_dict['max_length'] = data_args.max_target_length  # We must add max_length when setting min_length
+
     # Load pretrained model and tokenizer
     #
     # Distributed training:
@@ -366,16 +402,17 @@ def main():
     # download model & vocab.
     config = AutoConfig.from_pretrained(
         model_args.config_name if model_args.config_name else model_args.model_name_or_path,
-        cache_dir=model_args.cache_dir,
-        revision=model_args.model_revision,
-        use_auth_token=True if model_args.use_auth_token else None,
+        # cache_dir=model_args.cache_dir,  # NEW from original script (commented out becauase now is taking care of by **model_args.__dict__)
+        # revision=model_args.model_revision,  # NEW from original script (commented out becauase now is taking care of by **model_args.__dict__)
+        # use_auth_token=True if model_args.use_auth_token else None,  # NEW from original script (commented out becauase now is taking care of by **model_args.__dict__)
+        **model_args_dict # NEW from original script (enables sending config)
     )
     tokenizer = AutoTokenizer.from_pretrained(
         model_args.tokenizer_name if model_args.tokenizer_name else model_args.model_name_or_path,
         cache_dir=model_args.cache_dir,
         use_fast=model_args.use_fast_tokenizer,
         revision=model_args.model_revision,
-        use_auth_token=True if model_args.use_auth_token else None,
+        use_auth_token=True if model_args.use_auth_token else None
     )
     model = AutoModelForSeq2SeqLM.from_pretrained(
         model_args.model_name_or_path,
@@ -386,6 +423,7 @@ def main():
         use_auth_token=True if model_args.use_auth_token else None,
     )
 
+    # NEW from original script
     is_t5_model = model_args.model_name_or_path in [
         "t5-small",
         "t5-base",
@@ -399,7 +437,21 @@ def main():
             "`--source_prefix 'summarize: ' `"
         )
 
+    # NEW from original script
+    prefix = data_args.source_prefix if data_args.source_prefix is not None else ""
+
+    # NEW from original script
+    special_tokens_constants = get_special_tokens_constants(is_t5_model)
+    preprocessor = Preprocessor(prefix, special_tokens_constants)
+
+    # NEW from original script
+    tokenizer.add_special_tokens({'additional_special_tokens': list(special_tokens_constants.values())})
+
     model.resize_token_embeddings(len(tokenizer))
+
+    # NEW from original script
+    if model_args.freeze_embeds:
+        freeze_embeds(model)
 
     if model.config.decoder_start_token_id is None and isinstance(tokenizer, (MBartTokenizer, MBartTokenizerFast)):
         if isinstance(tokenizer, MBartTokenizer):
@@ -430,8 +482,6 @@ def main():
                 f" position encodings. Consider either reducing `--max_source_length` to {model.config.max_position_embeddings} or to automatically "
                 "resize the model's position encodings by passing `--resize_position_embeddings`."
             )
-
-    prefix = data_args.source_prefix if data_args.source_prefix is not None else ""
 
     # Preprocessing the datasets.
     # We need to tokenize inputs and targets.
@@ -491,26 +541,19 @@ def main():
             f"`{model.__class__.__name__}`. This will lead to loss being calculated twice and will take up more memory"
         )
 
-    special_tokens_constants = get_special_tokens_constants(is_t5_model)
-    preprocessor = Preprocessor(prefix, special_tokens_constants)
-
+    # NEW from original script
     def preprocess_function(examples):
         # remove pairs where at least one record is None
 
         inputs, targets = [], []
         for i in range(len(examples[text_column])):
+             # NEW from original script
             inputs.append(preprocessor.preprocess_input(
                 examples['doc_text'][i],
                 examples['highlight_spans'][i]
                 ))
             targets.append(examples['summary_text'][i])
-        
-        # for i in range(len(examples[text_column])):
-        #     if examples[text_column][i] is not None and examples[summary_column][i] is not None:
-        #         inputs.append(examples[text_column][i])
-        #         targets.append(examples[summary_column][i])
 
-        # inputs = [prefix + inp for inp in inputs]
         model_inputs = tokenizer(
             inputs, max_length=data_args.max_source_length, padding=padding, truncation=True)
 
@@ -527,6 +570,23 @@ def main():
             ]
 
         model_inputs["labels"] = labels["input_ids"]
+
+        # NEW from original script
+        global_attention_mask = []
+        if data_args.add_global_attention:
+            for input_ids in tqdm(model_inputs['input_ids']):
+                curr_global_attention_mask = [0 for _ in range(len(input_ids))]
+                curr_global_attention_mask[0] = 1
+
+                if data_args.add_global_attention_on_highlights:
+                    for input_id_idx, input_id in enumerate(input_ids):
+                        # Put attention on highlight tokens
+                        if input_id in tokenizer.additional_special_tokens_ids:
+                            curr_global_attention_mask[input_id_idx] = 1
+
+                global_attention_mask.append(curr_global_attention_mask)
+        model_inputs['global_attention_mask'] = global_attention_mask
+
         return model_inputs
 
     if training_args.do_train:
@@ -624,7 +684,7 @@ def main():
         decoded_preds, decoded_labels = postprocess_text(
             decoded_preds, decoded_labels)
 
-        result = compute_rouge_metrics(decoded_preds, decoded_labels, metric)
+        result = compute_rouge_metrics(decoded_preds, decoded_labels, metric)  # NEW from original script
 
         prediction_lens = [np.count_nonzero(
             pred != tokenizer.pad_token_id) for pred in preds]
@@ -702,6 +762,7 @@ def main():
 
         if trainer.is_world_process_zero():
             if training_args.predict_with_generate:
+                # NEW from original script
                 PredictionsAnalyzer(tokenizer, training_args).write_predictions_to_file(predict_results.predictions, predict_dataset)
 
     kwargs = {"finetuned_from": model_args.model_name_or_path,

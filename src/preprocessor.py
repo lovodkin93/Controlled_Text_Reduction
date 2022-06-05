@@ -97,19 +97,15 @@ def convert_highlight_rows_to_document_highlights(doc_reader, highlight_rows: pd
         any_row = doc_rows.iloc[0]
         doc = doc_reader.read_doc(any_row['topic'], any_row['documentFile'])
 
-        document_highlights = []
         # Each topic is a summary
-        for topic in doc_rows['topic'].unique():
-            summary = doc_reader.read_summary(topic, any_row['documentFile'])
-            highlight_spans = doc_rows['docSpanOffsets'].apply(convert_row_spans_str_to_list_of_highlights)
-            flattened_highlight_spans = [span for spans in highlight_spans.to_list() for span in spans]
+        summary = doc_reader.read_summary(any_row['summaryFile'])
+        highlight_spans = doc_rows['docSpanOffsets'].apply(convert_row_spans_str_to_list_of_highlights)
+        flattened_highlight_spans = [span for spans in highlight_spans.to_list() for span in spans]
 
-            document_highlights.append((doc, summary, flattened_highlight_spans))
-
-        return document_highlights
+        return [(doc, summary, flattened_highlight_spans)]
 
 
-    document_highlights_df = highlight_rows.groupby('documentFile').apply(handle_document_rows)
+    document_highlights_df = highlight_rows.groupby('summaryFile').apply(handle_document_rows)
     # Flatten list of lists to a list
     return [document_highlight for document_highlights in document_highlights_df.to_list() for document_highlight in document_highlights]
 

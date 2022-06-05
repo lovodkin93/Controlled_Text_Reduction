@@ -14,8 +14,8 @@ class DocReader:
         with open(f"{self.doc_data_dir}/{topic}/{document_file}") as f:
             return f.read()
 
-    def read_summary(self, topic: str, document_file: str) -> str:
-        with open(f"{self.doc_data_dir}/summaries/{topic}") as f:
+    def read_summary(self, summary_file: str) -> str:
+        with open(f"{self.doc_data_dir}/summaries/{summary_file}") as f:
             return f.read()
 
 

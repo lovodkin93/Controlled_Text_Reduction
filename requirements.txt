@@ -5,3 +5,5 @@ datasets >= 1.8.0
 nltk
 torch
 rouge-score
+wandb
+sentencepiece  # Necessary for pegasus, see https://github.com/huggingface/transformers/issues/8963
