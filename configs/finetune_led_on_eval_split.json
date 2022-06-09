@@ -1,0 +1,38 @@
+{
+    // Model config
+    "experiment_type": "seq2seq",
+    "model_name_or_path": "models/led_base_4096/checkpoint-2000",
+    "max_source_length": 4096,
+    "max_target_length": 512,
+    "model_name_or_path": "./models/led_base_16384/4096__global_on_highlights/checkpoint-2000",
+    "add_global_attention": true,
+    "add_global_attention_on_highlights": true,
+    // Model configs copied from the colab to finetune led https://colab.research.google.com/drive/12LjJazBl7Gam0XBPy_y0CTOJZeZ34c2v?usp=sharing#scrollTo=kQOaX6eRJXkM
+    "gradient_checkpointing": true, // Slower but allows more memory to be allocated, recommended by official page
+    "min_length": 100,
+    "length_penalty": 2.0,
+    "early_stopping": "True",
+    "no_repeat_ngram_size": 3,
+    "fp16": true, // Recommended by docs
+    "fp16_backend": "apex",  // Recommended by docs
+    // Predict
+    "predict_with_generate": "true",  
+    "num_beams": 2,  // Lever to play with if getting OOM, was suggested in docs
+    // Train              
+    "do_train": true,
+    "per_device_train_batch_size": 2,
+    "overwrite_output_dir": "true",
+    "train_file": "data/train__highlights.csv",
+    "save_total_limit": 2,  // Save only laste one and best one
+    // Eval while training
+    "do_eval": true,
+    "per_device_eval_batch_size": 1,  // Sometimes can be larger than training batch size (no grad is activated)
+    "validation_file": "data/dev__highlights__finetune_experiment_eval.csv",
+    "evaluation_strategy": "steps",
+    "eval_steps": 100,
+    "logging_steps": 50,
+    "num_train_epochs": 10.0,
+    // Wandb
+    "report_to": "wandb",
+    "run_name": "led-base-16384/4096__global_on_highlights__finetune_led"
+}

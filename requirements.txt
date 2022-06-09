@@ -7,3 +7,4 @@ torch
 rouge-score
 wandb
 sentencepiece  # Necessary for pegasus, see https://github.com/huggingface/transformers/issues/8963
+JSON-minify  # Necessary to write comments in json files

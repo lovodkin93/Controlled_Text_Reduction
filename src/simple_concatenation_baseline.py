@@ -38,9 +38,7 @@ def main():
     )
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--doc_data_dir')
     parser.add_argument('--test_file')
-    parser.add_argument('--output_dir')
     args, unknown = parser.parse_known_args()
 
     df = pd.read_csv(args.test_file)

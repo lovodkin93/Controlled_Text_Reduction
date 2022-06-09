@@ -2,6 +2,7 @@
 Fine-tuning the library models for sequence to sequence.
 """
 
+import json
 import logging
 import os
 import sys
@@ -136,10 +137,7 @@ class DataTrainingArguments:
     Arguments pertaining to what data we are going to input our model for training and eval.
     """
 
-    doc_data_dir: str = field(default=None, metadata={
-                      "help": "The directory in which to find the raw documents."})
-    train_file_highlight_rows: str = field(default=None, metadata={
-                      "help": "The raw file with highlight rows, before the join as training data."})
+    experiment_type: str = field(default=None)
     lang: str = field(default=None, metadata={
                       "help": "Language id for summarization."})
     dataset_name: Optional[str] = field(
@@ -350,6 +348,7 @@ def main():
                 "the `--output_dir` or add `--overwrite_output_dir` to train from scratch."
             )
 
+    
     # Set seed before initializing model.
     set_seed(training_args.seed)
 
@@ -585,7 +584,7 @@ def main():
                             curr_global_attention_mask[input_id_idx] = 1
 
                 global_attention_mask.append(curr_global_attention_mask)
-        model_inputs['global_attention_mask'] = global_attention_mask
+            model_inputs['global_attention_mask'] = global_attention_mask
 
         return model_inputs
 
@@ -702,6 +701,14 @@ def main():
         data_collator=data_collator,
         compute_metrics=compute_metrics if training_args.predict_with_generate else None,
     )
+
+    # NEW from original script (if received config file, save it with the model)
+    if len(sys.argv) == 2:
+        config_file_path = sys.argv[1]
+        with open(config_file_path, "r") as f:
+            config_file = json.loads(f.read())
+        with open(f"{training_args.output_dir}/config_file.json", "w") as f:
+            f.write(json.dumps(config_file))
 
     # Training
     if training_args.do_train:

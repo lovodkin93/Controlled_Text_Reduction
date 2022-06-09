@@ -1,0 +1,28 @@
+{
+    // Model config
+    "experiment_type": "seq2seq",      
+    "model_name_or_path": "./models/led_base_4096/checkpoint-2000",
+    "output_dir": "models/predict/eval",
+    "max_source_length": 4096,
+    "max_target_length": 512,  // Lowering this will yield unreliable rouge results (based only on the limited summary)!
+    "fp16": true, // Lower memory consumption and faster training (not supported based on docs)
+    // LED
+    "add_global_attention": true,
+    "add_global_attention_on_highlights": true,
+    "gradient_checkpointing": true, // Slower but allows more memory to be allocated, recommended by official page
+    "min_length": 100,
+    "length_penalty": 2.0,
+    "early_stopping": "True",
+    "no_repeat_ngram_size": 3,
+    // Train config                
+    "overwrite_output_dir": "true",
+    "validation_file": "data/dev__highlights.csv", // Necessary just not to crash run.py, doesn't do anything
+    // Predict
+    "do_predict": true,
+    "predict_with_generate": "true",
+    "test_file": "data/dev__highlights.csv",
+    "per_device_eval_batch_size": 1,  // Sometimes can be larger than training batch size (no grad is activated)
+    "num_beams": 2,  // Lever to play with if getting OOM
+    // Cancel Wandb
+    "report_to": "none"
+}

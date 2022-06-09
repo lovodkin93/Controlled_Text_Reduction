@@ -1,40 +1,52 @@
 from src.run import main as seq_to_seq_main
 from src.simple_concatenation_baseline import main as simple_concatenation_main
-import pandas as pd
-import argparse
-from src.doc_reader import DocReader
-from src.preprocessor import convert_highlight_rows_to_document_highlights
-import os
-import sys
 import json
+import sys
+from json_minify import json_minify
+import os
+from pathlib import Path
+import re
 
-def preprocess_highlight_rows_file():
+
+def prepare_config_for_hf() -> dict:
     """
-    Raw files are in a format of highlight rows.
-    We need to convert it to a format for training (document in each row)
+    Write minified config so huggingface can read it even if it has comments, and handle env variables
     """
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--doc_data_dir')
-    parser.add_argument('--train_file_highlight_rows')
-    parser.add_argument('--output_dir')
-    args, unknown = parser.parse_known_args()
+    # Read non-minified config with comments
+    config_file_path = sys.argv[1]
+    with open(config_file_path, "r") as f:
+        minified_config = json_minify(f.read())
+        config = json.loads(minified_config)
 
-    highlight_rows = pd.read_csv(args.train_file_highlight_rows)
-    doc_reader = DocReader(args.doc_data_dir)
+    # Handle env variables templates: {env:ENV_VARIABLE}
+    for key, value in config.items():
+        if isinstance(value, str):
+            results = re.findall(r'{env:(.*)}', value)
+            for env_variable in results:
+                value = value.replace(f"${{env:{env_variable}}}", os.environ[env_variable])
+            
+            if any(results):
+                config[key] = value
 
-    docs_and_highlighted_spans = convert_highlight_rows_to_document_highlights(doc_reader, highlight_rows)
+    # Save minified config
+    new_config_path = f"{os.environ['TMPDIR']}/controlled_reduction/minified_configs/{config_file_path}"
+    Path(os.path.dirname(new_config_path)).mkdir(parents=True, exist_ok=True)
+    with open(new_config_path, "w") as f:
+        f.write(json.dumps(config))
 
-    train_file_path = f"train.csv"
-    highlights_df = pd.DataFrame(docs_and_highlighted_spans, columns=["doc_text", "summary_text", "highlight_spans"])
-    # Convert column to proper json before dumping to file
-    highlights_df['highlight_spans'] = highlights_df['highlight_spans'].apply(json.dumps)
-    highlights_df.to_csv(train_file_path, index=False)
-    
-    sys.argv.extend(["--train_file", train_file_path])
+    sys.argv[1] = new_config_path
+
+    return config
 
 
-preprocess_highlight_rows_file()
+if __name__ == "__main__":
 
-seq_to_seq_main()
-# simple_concatenation_main()
+    config = prepare_config_for_hf()
+
+    experiment_type = config['experiment_type']
+
+    if experiment_type == "seq2seq":
+        seq_to_seq_main()
+    elif experiment_type == "simple_concatenation":
+        simple_concatenation_main()
