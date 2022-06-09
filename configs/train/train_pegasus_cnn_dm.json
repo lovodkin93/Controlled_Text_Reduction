@@ -13,8 +13,7 @@
 "adafactor": true, // recommended by official page
 // Predict
 // "do_predict",  # Loading predict dataset just loads the memory un-necessairly
-"predict_with_generate": "true",  
-// "test_file": "data/test.csv",
+"predict_with_generate": "true",
 // Train              
 "do_train": true,
 "per_device_train_batch_size": 1,

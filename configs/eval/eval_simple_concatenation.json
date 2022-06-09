@@ -1,0 +1,4 @@
+{
+    "experiment_type": "simple_concatenation",
+    "test_file": "data/dev__highlights.csv"
+}

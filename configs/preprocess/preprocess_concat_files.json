@@ -1,0 +1,17 @@
+{
+    // Train
+    // "files_to_concat": "train_duc2001__highlights.csv,train_duc2002__highlights.csv",
+    // "output_file_path": "data/train__highlights.csv",
+    // Train filtered
+    // "files_to_concat": "train_duc2001__filtered_highlights.csv,train_duc2002__filtered_highlights.csv",
+    // "output_file_path": "data/train__filtered_highlights.csv",
+    // Dev
+    "files_to_concat": "dev_duc2001__highlights.csv,dev_duc2002__highlights.csv",
+    "output_file_path": "data/dev__highlights_fixed.csv",
+    // Test
+    // "files_to_concat": "test_duc2001__highlights.csv,test_duc2002__highlights.csv",
+    // "output_file_path": "data/test__highlights.csv",
+    // Config
+    "data_files_dir": "data",
+    "do_concat": true
+}
