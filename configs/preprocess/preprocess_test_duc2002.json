@@ -1,6 +1,0 @@
-{
-    "train_file_highlight_rows": "{env:RAW_DATA_DIR}/dev_test/separated/duc2002/test/testset_alignments.csv",
-    "doc_data_dir": "{env:RAW_DATA_DIR}/dev_test/separated/duc2002/test/data",
-    "output_file_path": "data/test_duc2002__highlights.csv",
-    "do_preprocess": "true"
-}

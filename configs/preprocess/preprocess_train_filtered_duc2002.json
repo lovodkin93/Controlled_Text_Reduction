@@ -1,6 +1,6 @@
 {
-    "train_file_highlight_rows": "{env:RAW_DATA_DIR}/train/duc2002/filtered_alignments.csv",
-    "doc_data_dir": "{env:RAW_DATA_DIR}/train/duc2002/data",
+    "train_file_highlight_rows": "${env:RAW_DATA_DIR}/train/duc2002/filtered_alignments.csv",
+    "doc_data_dir": "${env:RAW_DATA_DIR}/train/duc2002/data",
     "output_file_path": "data/train_duc2002__filtered_highlights.csv",
     "do_preprocess": "true"
 }

@@ -7,6 +7,8 @@ from src.doc_reader import DocReader
 from src.preprocessor import convert_highlight_rows_to_document_highlights
 from typing import List
 
+from src.utils import prepare_config_for_hf
+
 
 def preprocess_from_highlight_rows_to_document_rows(doc_data_dir: str, train_file_highlight_rows: str, output_file_path: str) -> None:
     """
@@ -38,25 +40,13 @@ def concat_files(data_files_dir: str, files_to_concat: List[str], output_file_pa
 
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--output_file_path')        
 
-    # Preprocess
-    parser.add_argument('--do_preprocess')
-    parser.add_argument('--doc_data_dir')
-    parser.add_argument('--train_file_highlight_rows')
-    
-    # Concat
-    parser.add_argument('--do_concat')
-    parser.add_argument('--data_files_dir')
-    parser.add_argument('--files_to_concat')
+    config = prepare_config_for_hf()
 
-    args, unknown = parser.parse_known_args()
-
-    if args.do_preprocess:
-        preprocess_from_highlight_rows_to_document_rows(args.doc_data_dir, args.train_file_highlight_rows, args.output_file_path)
-    elif args.do_concat:
-        concat_files(args.data_files_dir, args.files_to_concat.split(","), args.output_file_path)
+    if config.get('do_preprocess', False):
+        preprocess_from_highlight_rows_to_document_rows(config['doc_data_dir'], config['train_file_highlight_rows'], config['output_file_path'])
+    elif config.get('do_concat', False):
+        concat_files(config['data_files_dir'], config['files_to_concat'], config['args.output_file_path'])
         
 
 
