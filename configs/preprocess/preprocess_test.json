@@ -1,6 +1,6 @@
 {
-    "train_file_highlight_rows": "${env:RAW_DATA_DIR}/dev_test/separated/test/testset_alignments.csv",
-    "doc_data_dir": "${env:RAW_DATA_DIR}/dev_test/separated/test/data",
+    "train_file_highlight_rows": "${env:RAW_DATA_DIR}/test/testset_alignments.csv",
+    "doc_data_dir": "${env:RAW_DATA_DIR}/test/data",
     "output_file_path": "data/test__highlights.csv",
     "do_preprocess": "true"
 }
