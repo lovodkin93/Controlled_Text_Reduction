@@ -1,8 +1,8 @@
 {
     // Model config
     "experiment_type": "seq2seq",      
-    "model_name_or_path": "./models/led_base_4096/checkpoint-2000",
-    "output_dir": "${env:TMPDIR}/controlled_reduction/predict",
+    "model_name_or_path": "./models/led-base-16384/4096__global_on_highlights/checkpoint-2000",
+    "output_dir": "models/predict/debug",
     "max_source_length": 4096,
     "max_target_length": 512,  // Lowering this will yield unreliable rouge results (based only on the limited summary)!
     "fp16": true, // Lower memory consumption and faster training (not supported based on docs)

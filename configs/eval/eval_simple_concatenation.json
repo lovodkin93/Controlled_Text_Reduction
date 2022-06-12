@@ -1,4 +1,5 @@
 {
     "experiment_type": "simple_concatenation",
-    "test_file": "data/dev__highlights.csv"
+    "test_file": "data/dev__highlights.csv",
+    "output_dir": "models/predict/eval/simple_concatenation"
 }

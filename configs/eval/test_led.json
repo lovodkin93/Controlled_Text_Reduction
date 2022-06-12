@@ -2,8 +2,7 @@
     // Model config
     "experiment_type": "seq2seq",      
     "model_name_or_path": "./models/led-base-16384/4096__global_on_highlights/checkpoint-2000",
-    // "model_name_or_path": "./models/led-base-16384/4096__no_highlights/checkpoint-2000",
-    "output_dir": "models/predict/eval/model",
+    "output_dir": "models/predict/test",
     "max_source_length": 4096,
     "max_target_length": 512,  // Lowering this will yield unreliable rouge results (based only on the limited summary)!
     "fp16": true, // Lower memory consumption and faster training (not supported based on docs)
@@ -21,7 +20,7 @@
     // Predict
     "do_predict": true,
     "predict_with_generate": "true",
-    "test_file": "data/dev__highlights.csv",
+    "test_file": "data/test__highlights.csv",
     "per_device_eval_batch_size": 1,  // Sometimes can be larger than training batch size (no grad is activated)
     "num_beams": 2,  // Lever to play with if getting OOM
     // Cancel Wandb

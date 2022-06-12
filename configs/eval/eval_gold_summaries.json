@@ -1,0 +1,5 @@
+{
+    "experiment_type": "gold_summaries",
+    "test_file": "data/dev__highlights.csv",
+    "output_dir": "models/predict/eval/gold_summaries"
+}
