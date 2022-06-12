@@ -1,3 +1,5 @@
+import numpy as np
+
 def compute_rouge_metrics(predictions: list, references: list, metric) -> dict:
     assert len(predictions) == len(references)
 
@@ -14,3 +16,9 @@ def compute_rouge_metrics(predictions: list, references: list, metric) -> dict:
     result_parsed = {k: round(v, 4) for k, v in result_parsed.items()}
 
     return result_parsed
+
+def compute_summac_metrics(inputs, predictions, model) -> dict:
+    result = model.score(inputs, predictions)
+    return {
+        "summac": np.mean(result['scores'])
+    }

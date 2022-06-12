@@ -264,6 +264,10 @@ class DataTrainingArguments:
     add_global_attention_on_highlights: bool = field(
         default=False
     )
+    # NEW from original script
+    should_preprocess_add_highlights: bool = field(
+        default=True
+    )
 
 
     def __post_init__(self):
@@ -441,7 +445,7 @@ def main():
 
     # NEW from original script
     special_tokens_constants = get_special_tokens_constants(is_t5_model)
-    preprocessor = Preprocessor(prefix, special_tokens_constants)
+    preprocessor = Preprocessor(prefix, special_tokens_constants, data_args.should_preprocess_add_highlights)
 
     # NEW from original script
     tokenizer.add_special_tokens({'additional_special_tokens': list(special_tokens_constants.values())})
@@ -636,7 +640,8 @@ def main():
             predict_dataset = predict_dataset.select(
                 range(max_predict_samples))
         with training_args.main_process_first(desc="prediction dataset map pre-processing"):
-            predict_dataset = predict_dataset.map(
+            # NEW from original_script
+            prep_predict_dataset = predict_dataset.map(
                 preprocess_function,
                 batched=True,
                 num_proc=data_args.preprocessing_num_workers,
@@ -754,15 +759,15 @@ def main():
         logger.info("*** Predict ***")
 
         predict_results = trainer.predict(
-            predict_dataset, metric_key_prefix="predict", max_length=max_length, num_beams=num_beams
+            prep_predict_dataset, metric_key_prefix="predict", max_length=max_length, num_beams=num_beams
         )
         metrics = predict_results.metrics
         max_predict_samples = (
             data_args.max_predict_samples if data_args.max_predict_samples is not None else len(
-                predict_dataset)
+                prep_predict_dataset)
         )
         metrics["predict_samples"] = min(
-            max_predict_samples, len(predict_dataset))
+            max_predict_samples, len(prep_predict_dataset))
 
         trainer.log_metrics("predict", metrics)
         trainer.save_metrics("predict", metrics)
@@ -770,7 +775,7 @@ def main():
         if trainer.is_world_process_zero():
             if training_args.predict_with_generate:
                 # NEW from original script
-                PredictionsAnalyzer(tokenizer, training_args).write_predictions_to_file(predict_results.predictions, predict_dataset)
+                PredictionsAnalyzer(tokenizer, training_args.output_dir).write_predictions_to_file(predict_results.predictions, prep_predict_dataset)
 
     kwargs = {"finetuned_from": model_args.model_name_or_path,
               "tasks": "summarization"}

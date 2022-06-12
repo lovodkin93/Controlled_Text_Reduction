@@ -13,4 +13,6 @@ if __name__ == "__main__":
     if experiment_type == "seq2seq":
         seq_to_seq_main()
     elif experiment_type == "simple_concatenation":
-        simple_concatenation_main()
+        simple_concatenation_main(config, summaries_to_test_key="simple_concatenation")
+    elif experiment_type == "gold_summaries":
+        simple_concatenation_main(config, summaries_to_test_key="gold_summaries")

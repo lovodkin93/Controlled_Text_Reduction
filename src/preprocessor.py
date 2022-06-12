@@ -9,9 +9,10 @@ class Preprocessor:
     Preprocess inputs and outputs
     """
 
-    def __init__(self, prefix, special_tokens_constants):
+    def __init__(self, prefix, special_tokens_constants, should_add_highlights: bool):
         self.prefix = prefix
         self.special_tokens_constants = special_tokens_constants
+        self.should_add_highlights = should_add_highlights
 
 
     def preprocess_input(self, source_text, highlighted_spans) -> str:
@@ -21,15 +22,19 @@ class Preprocessor:
 
         # Collect all indices of tokens that need to be added
         idx_to_tokens = defaultdict(list)
-        if isinstance(highlighted_spans, str):
-            highlighted_spans = json.loads(highlighted_spans)
 
-        # We don't care about nested highlights / consecutive highlights
-        highlighted_spans = merge_overlapping_intervals(highlighted_spans)
+        if not self.should_add_highlights:
+            highlighted_spans = []
+        else:
+            if isinstance(highlighted_spans, str):
+                highlighted_spans = json.loads(highlighted_spans)
 
-        for start, end in highlighted_spans:
-            idx_to_tokens[start].append(self.special_tokens_constants['highlight_start'])
-            idx_to_tokens[end].append(self.special_tokens_constants['highlight_end'])
+            # We don't care about nested highlights / consecutive highlights
+            highlighted_spans = merge_overlapping_intervals(highlighted_spans)
+
+            for start, end in highlighted_spans:
+                idx_to_tokens[start].append(self.special_tokens_constants['highlight_start'])
+                idx_to_tokens[end].append(self.special_tokens_constants['highlight_end'])
 
         # Build concatenated text by running over the text in parts
         source_text_with_highlighted_spans = ""
