@@ -1,0 +1,3 @@
+[submodule "summac"]
+	path = summac
+	url = https://github.com/tingofurro/summac.git
