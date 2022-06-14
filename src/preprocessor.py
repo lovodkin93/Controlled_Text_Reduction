@@ -129,9 +129,9 @@ def merge_overlapping_intervals(intervals: List[Tuple[int, int]]) -> List[Tuple[
         # interval does not overlap with the previous and it's not its consecutive, simply append it.
         if not merged or merged[-1][1] + 1 < interval[0]:
             merged.append(interval)
-        else:
         # otherwise, there is overlap, so we merge the current and previous
         # intervals.
+        else:
             merged[-1][1] = max(merged[-1][1], interval[1])
 
     return merged

@@ -18,17 +18,20 @@
     // Predict
     "predict_with_generate": "true",  
     "num_beams": 2,  // Lever to play with if getting OOM, was suggested in docs
-    // Train              
+    // Train
     "do_train": true,
     "per_device_train_batch_size": 2,
     "overwrite_output_dir": "true",
     "train_file": "data/train__highlights.csv",
-    "save_total_limit": 2,  // Save only laste one and best one
+    "save_total_limit": 2,  // Save only last one and best one
+    "metric_for_best_model": "eval_rouge1",
+    "load_best_model_at_end": true,
     // Eval while training
     "do_eval": true,
     "per_device_eval_batch_size": 1,  // Sometimes can be larger than training batch size (no grad is activated)
     "validation_file": "data/dev__highlights__finetune_experiment_eval.csv",
     "evaluation_strategy": "steps",
+    "save_steps": 100,
     "eval_steps": 100,
     "logging_steps": 50,
     "num_train_epochs": 10.0,

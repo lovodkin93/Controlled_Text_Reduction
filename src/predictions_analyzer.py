@@ -5,70 +5,30 @@ import pandas as pd
 import numpy as np    
 import json
 
+from src.concatenate_highlights import concatenate_highlights
+
 
 class PredictionsAnalyzer:
-    def __init__(self, tokenizer, output_dir: str) -> None:
+    def __init__(self, tokenizer, output_dir: str, summac_model) -> None:
         self.tokenizer = tokenizer
         self.output_dir = output_dir
+        self.summac_model = summac_model
 
-    def write_predictions_to_file(self, predictions, dataset, is_tokenized=True):
+    def write_predictions_to_file(self, predictions, dataset, df, is_tokenized=True):
+        objects = self._clean_predictions(predictions, dataset, is_tokenized)
 
-        def remove_pad_tokens(prediction_tokens):
-            """
-            We want to calculate the num of tokens without the padding
-            """
-
-            return [token for token in prediction_tokens if token != self.tokenizer.pad_token_id]
-
-        # Non-tokenized can be outputs not from a model, such as naive concatenation
-        if not is_tokenized:
-            decoded_predictions = predictions
-            input_seqs = dataset
-            input_tokenizer_lengths = None
-            predictions_tokenizer_lengths = None
-        else:
-            decoded_predictions = self.tokenizer.batch_decode(
-                predictions, skip_special_tokens=True
-            )
-            decoded_predictions = [pred.strip() for pred in decoded_predictions]
-
-            input_seqs = [self.tokenizer.decode(dataset[i]['input_ids'])
-                            for i in range(len(dataset))]
-
-            # Length can be useful to see if the model actually saw everything
-            predictions_tokenizer_lengths = [len(remove_pad_tokens(predictions[i])) for i in range(len(predictions))]
-            input_tokenizer_lengths = [len(dataset[i]['input_ids']) for i in range(len(dataset))]
-
-        if not os.path.exists(self.output_dir):
-            os.makedirs(self.output_dir)
-        output_prediction_file = os.path.join(
-            self.output_dir, "generated_predictions.csv")
-
-        gold = None
-        if 'labels' in dataset[0]:
-            gold = [self.tokenizer.decode(dataset[i]['labels'], skip_special_tokens=True)
-                                for i in range(len(dataset))]
-            # Length can be useful to see if the model actually saw everything
-            gold_tokenizer_lengths = [len(dataset[i]['labels']) for i in range(len(dataset))]
-
-        # save all to dataframe
-        objects = {"input": input_seqs, "input_tokenizer_length": input_tokenizer_lengths, "predicted": decoded_predictions, "prediction_tokenizer_length": predictions_tokenizer_lengths}
-        if gold is not None:
-            objects["gold"] = gold
-            objects["gold_tokenizer_length"] = gold_tokenizer_lengths
-
-            self.calculate_rouge_between_gold_n_prediction(objects, decoded_predictions, gold)
-
-        if not is_tokenized:
-            clean_input_seqs = dataset
-        else:
-            clean_input_seqs = [self.tokenizer.decode(dataset[i]['input_ids'], skip_special_tokens=True)
-                            for i in range(len(dataset))]
+        # Calculate between gold and summaries (if there is gold)
+        if objects.get('gold') is not None:
+            self.calculate_rouge_between_gold_n_prediction(objects, objects['predicted'], objects['gold'])
         
-        self.calculate_summc_between_input_n_summaries(objects, clean_input_seqs, decoded_predictions)
+        # Calculate between input and summaries
+        self.calculate_summac_between_input_n_summaries(objects, objects['clean_input'], objects['predicted'], prefix="input")
 
-        df = pd.DataFrame(objects)
-        df.to_csv(output_prediction_file, index=False)
+        # Calculate between highlights and summaries
+        highlights_input = concatenate_highlights(df)
+        self.calculate_summac_between_input_n_summaries(objects, highlights_input, objects['predicted'], prefix="highlights")
+
+        self._save_to_file(objects)
 
     def calculate_rouge_between_gold_n_prediction(self, objects, decoded_predictions, gold):
         # Add rouge per prediction
@@ -77,13 +37,15 @@ class PredictionsAnalyzer:
         objects['rouge1'] = [x.fmeasure for x in result_per_pred['rouge1']]
         objects['rouge2'] = [x.fmeasure for x in result_per_pred['rouge2']]
 
-    def calculate_summc_between_input_n_summaries(self, objects, inputs, summaries):
-        sys.path.append('summac')  # Will fail if you didn't load the submodule (https://git-scm.com/book/en/v2/Git-Tools-Submodules)
-        from summac.model_summac import SummaCZS
-        model = SummaCZS(granularity="sentence", model_name="vitc", use_con=False)
+    def calculate_summac_between_input_n_summaries(self, objects, inputs, summaries, prefix: str):
+        """
+        Calculates SummaC score, but also saves for each summary sentence the max entailing and max contradicting sentence
+        """
 
+        model = self.summac_model
         result = model.score(inputs, summaries)
 
+        # Find for each example the max entailing and max contradicting sentence
         per_example_per_sentence_highest_source_score = []
         for example_idx, image in enumerate(result['images']):
             split_input = model.imager.split_text(inputs[example_idx])
@@ -105,8 +67,62 @@ class PredictionsAnalyzer:
 
             per_example_per_sentence_highest_source_score.append(json.dumps(per_sentence_highest_source_score))
 
-        objects['summac_per_example_per_sentence_highest_source_score'] = per_example_per_sentence_highest_source_score
-        objects['summac_scores'] = result['scores']
+        objects[f'{prefix}_summac_per_example_per_sentence_highest_source_score'] = per_example_per_sentence_highest_source_score
+        objects[f'{prefix}_summac_scores'] = result['scores']
+
+    def _clean_predictions(self, predictions, dataset, is_tokenized):
+        def remove_pad_tokens(prediction_tokens):
+            """
+            We want to calculate the num of tokens without the padding
+            """
+
+            return [token for token in prediction_tokens if token != self.tokenizer.pad_token_id]
+
+        # Non-tokenized can be outputs not from a model, such as naive concatenation
+        if not is_tokenized:
+            decoded_predictions = predictions
+            input_seqs = dataset
+            clean_input_seqs = dataset
+            input_tokenizer_lengths = None
+            predictions_tokenizer_lengths = None
+        else:
+            decoded_predictions = self.tokenizer.batch_decode(
+                predictions, skip_special_tokens=True
+            )
+            decoded_predictions = [pred.strip() for pred in decoded_predictions]
+
+            input_seqs = [self.tokenizer.decode(dataset[i]['input_ids'])
+                            for i in range(len(dataset))]
+            clean_input_seqs = [self.tokenizer.decode(dataset[i]['input_ids'], skip_special_tokens=True)
+                            for i in range(len(dataset))]
+
+            # Length can be useful to see if the model actually saw everything
+            predictions_tokenizer_lengths = [len(remove_pad_tokens(predictions[i])) for i in range(len(predictions))]
+            input_tokenizer_lengths = [len(dataset[i]['input_ids']) for i in range(len(dataset))]
+
+        gold = None
+        gold_tokenizer_lengths = None
+        if 'labels' in dataset[0]:
+            gold = [self.tokenizer.decode(dataset[i]['labels'], skip_special_tokens=True)
+                                for i in range(len(dataset))]
+            # Length can be useful to see if the model actually saw everything
+            gold_tokenizer_lengths = [len(dataset[i]['labels']) for i in range(len(dataset))]
+
+        objects = {"input": input_seqs, "clean_input": clean_input_seqs, "input_tokenizer_length": input_tokenizer_lengths, "predicted": decoded_predictions, "prediction_tokenizer_length": predictions_tokenizer_lengths}
+        if gold is not None:
+            objects["gold"] = gold
+            objects["gold_tokenizer_length"] = gold_tokenizer_lengths
+
+        return objects
+
+    def _save_to_file(self, objects):
+        df = pd.DataFrame(objects)
+        if not os.path.exists(self.output_dir):
+            os.makedirs(self.output_dir)
+        output_prediction_file = os.path.join(
+            self.output_dir, "generated_predictions.csv")
+        df.to_csv(output_prediction_file, index=False)
+
 
     def _summc_from_image_to_scores(self, model, image):
         """

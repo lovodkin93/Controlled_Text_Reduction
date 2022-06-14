@@ -8,6 +8,7 @@ import os
 import sys
 from dataclasses import dataclass, field
 from typing import Optional
+import pandas as pd
 
 import datasets
 import nltk  # Here to have a nice missing dependency error message early on
@@ -34,11 +35,12 @@ from transformers import (
 from transformers.trainer_utils import get_last_checkpoint
 from transformers.utils import check_min_version, is_offline_mode
 from transformers.utils.versions import require_version
-from src.compute_metrics import compute_rouge_metrics
+from src.compute_metrics import compute_rouge_metrics, compute_summac_metrics
 from src.freeze_embeds import freeze_embeds
 from src.predictions_analyzer import PredictionsAnalyzer
 
 from src.preprocessor import Preprocessor, get_special_tokens_constants
+from src.utils import get_summac_model
 
 
 # Will error if the minimal version of Transformers is not installed. Remove at your own risks.
@@ -662,6 +664,7 @@ def main():
 
     # Metric
     metric = load_metric("rouge")
+    summac_model = get_summac_model()
 
     def postprocess_text(preds, labels):
         preds = [pred.strip() for pred in preds]
@@ -688,7 +691,9 @@ def main():
         decoded_preds, decoded_labels = postprocess_text(
             decoded_preds, decoded_labels)
 
-        result = compute_rouge_metrics(decoded_preds, decoded_labels, metric)  # NEW from original script
+        # NEW from original script
+        result = compute_rouge_metrics(decoded_preds, decoded_labels, metric)
+        # result.update(compute_summac_metrics(decoded_labels, decoded_preds, summac_model))
 
         prediction_lens = [np.count_nonzero(
             pred != tokenizer.pad_token_id) for pred in preds]
@@ -775,7 +780,7 @@ def main():
         if trainer.is_world_process_zero():
             if training_args.predict_with_generate:
                 # NEW from original script
-                PredictionsAnalyzer(tokenizer, training_args.output_dir).write_predictions_to_file(predict_results.predictions, prep_predict_dataset)
+                PredictionsAnalyzer(tokenizer, training_args.output_dir, summac_model).write_predictions_to_file(predict_results.predictions, prep_predict_dataset, pd.DataFrame(predict_dataset.to_dict()))
 
     kwargs = {"finetuned_from": model_args.model_name_or_path,
               "tasks": "summarization"}
