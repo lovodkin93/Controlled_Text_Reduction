@@ -1,4 +1,4 @@
-from src.preprocessor import Preprocessor
+from src.preprocessor import Preprocessor, convert_row_spans_str_to_list_of_highlights, convert_highlight_rows_to_document_highlights
 from mock import MagicMock
 import pandas as pd
 
@@ -35,8 +35,7 @@ class TestPreprocessor:
         assert prep_output == summary_text
 
     def test_convert_row_spans_str_to_list_of_highlights(self):
-        preprocessor: Preprocessor = Preprocessor("", {})
-        result = preprocessor.convert_row_spans_str_to_list_of_highlights(
+        result = convert_row_spans_str_to_list_of_highlights(
             "5361, 5374;5380, 5446")
         assert result == [(5361, 5374), (5380, 5446)]
 
@@ -46,16 +45,17 @@ class TestPreprocessor:
         doc_reader_mock = MagicMock()
         doc_reader_mock.read_doc.return_value = doc_text
         doc_reader_mock.read_summary.return_value = summary_text        
-        preprocessor: Preprocessor = Preprocessor("", {})
         rows = pd.DataFrame(
             [{
                 "topic": "abc",
+                "summaryFile": "abc",
                 "documentFile": "abc",
                 "docSpanOffsets": "5361, 5374;5380, 5446"
             }, {
                 "topic": "abc",
+                "summaryFile": "abc",
                 "documentFile": "abc",
                 "docSpanOffsets": "0, 5"
             }])
-        result = preprocessor.convert_highlight_rows_to_document_highlights(rows)
+        result = convert_highlight_rows_to_document_highlights(doc_reader_mock, rows)
         assert result == [(doc_text, summary_text, [(5361, 5374), (5380, 5446), (0, 5)])]

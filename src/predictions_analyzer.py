@@ -20,13 +20,14 @@ class PredictionsAnalyzer:
         # Calculate between gold and summaries (if there is gold)
         if objects.get('gold') is not None:
             self.calculate_rouge_between_gold_n_prediction(objects, objects['predicted'], objects['gold'])
-        
-        # Calculate between input and summaries
-        self.calculate_summac_between_input_n_summaries(objects, objects['clean_input'], objects['predicted'], prefix="input")
 
-        # Calculate between highlights and summaries
-        highlights_input = concatenate_highlights(df)
-        self.calculate_summac_between_input_n_summaries(objects, highlights_input, objects['predicted'], prefix="highlights")
+        if self.summac_model is not None:
+            # Calculate between input and summaries
+            self.calculate_summac_between_input_n_summaries(objects, objects['clean_input'], objects['predicted'], prefix="input")
+
+            # Calculate between highlights and summaries
+            highlights_input = concatenate_highlights(df)
+            self.calculate_summac_between_input_n_summaries(objects, highlights_input, objects['predicted'], prefix="highlights")
 
         self._save_to_file(objects)
 
@@ -43,32 +44,33 @@ class PredictionsAnalyzer:
         """
 
         model = self.summac_model
-        result = model.score(inputs, summaries)
+        if model is not None:
+            result = model.score(inputs, summaries)
 
-        # Find for each example the max entailing and max contradicting sentence
-        per_example_per_sentence_highest_source_score = []
-        for example_idx, image in enumerate(result['images']):
-            split_input = model.imager.split_text(inputs[example_idx])
-            split_summary = model.imager.split_text(summaries[example_idx])
-            per_sentence_highest_source_score = []
-            # Image shape: 3 x num_source_sents x num_summary_sents
-            for summary_sentence_idx in range(0, image.shape[2]):
-                summary_sentence = split_summary[summary_sentence_idx]
-                max_ent_score, max_ent_idx, max_con_score, max_con_idx, final_score = self._summc_from_image_to_scores(model, image[:,:,summary_sentence_idx])
+            # Find for each example the max entailing and max contradicting sentence
+            per_example_per_sentence_highest_source_score = []
+            for example_idx, image in enumerate(result['images']):
+                split_input = model.imager.split_text(inputs[example_idx])
+                split_summary = model.imager.split_text(summaries[example_idx])
+                per_sentence_highest_source_score = []
+                # Image shape: 3 x num_source_sents x num_summary_sents
+                for summary_sentence_idx in range(0, image.shape[2]):
+                    summary_sentence = split_summary[summary_sentence_idx]
+                    max_ent_score, max_ent_idx, max_con_score, max_con_idx, final_score = self._summc_from_image_to_scores(model, image[:,:,summary_sentence_idx])
 
-                per_sentence_highest_source_score.append({
-                    "hypothesis": summary_sentence,
-                    "score": final_score,
-                    "max_ent_score": max_ent_score,
-                    "max_ent_premise": split_input[max_ent_idx],
-                    "max_con_score": max_con_score,
-                    "max_con_premise": split_input[max_con_idx],
-                })
+                    per_sentence_highest_source_score.append({
+                        "hypothesis": summary_sentence,
+                        "score": final_score,
+                        "max_ent_score": max_ent_score,
+                        "max_ent_premise": split_input[max_ent_idx],
+                        "max_con_score": max_con_score,
+                        "max_con_premise": split_input[max_con_idx],
+                    })
 
-            per_example_per_sentence_highest_source_score.append(json.dumps(per_sentence_highest_source_score))
+                per_example_per_sentence_highest_source_score.append(json.dumps(per_sentence_highest_source_score))
 
-        objects[f'{prefix}_summac_per_example_per_sentence_highest_source_score'] = per_example_per_sentence_highest_source_score
-        objects[f'{prefix}_summac_scores'] = result['scores']
+            objects[f'{prefix}_summac_per_example_per_sentence_highest_source_score'] = per_example_per_sentence_highest_source_score
+            objects[f'{prefix}_summac_scores'] = result['scores']
 
     def _clean_predictions(self, predictions, dataset, is_tokenized):
         def remove_pad_tokens(prediction_tokens):
@@ -81,7 +83,7 @@ class PredictionsAnalyzer:
         # Non-tokenized can be outputs not from a model, such as naive concatenation
         if not is_tokenized:
             decoded_predictions = predictions
-            input_seqs = dataset
+            input_seqs = None
             clean_input_seqs = dataset
             input_tokenizer_lengths = None
             predictions_tokenizer_lengths = None

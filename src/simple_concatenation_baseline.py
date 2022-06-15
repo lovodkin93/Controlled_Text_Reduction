@@ -41,8 +41,10 @@ def main(config: dict, summaries_to_test_key: str):
     result = compute_rouge_metrics(summaries_to_test, summaries, metric)
 
     # Calc Summac
-    summac_model = get_summac_model()
-    result.update(compute_summac_metrics(inputs, summaries_to_test, summac_model))
+    summac_model = None
+    if config.get('eval_with_summac', True):
+        summac_model = get_summac_model()
+        result.update(compute_summac_metrics(inputs, summaries_to_test, summac_model))
 
     logging.info(result)
     logging.info("Analyzing predictions...")

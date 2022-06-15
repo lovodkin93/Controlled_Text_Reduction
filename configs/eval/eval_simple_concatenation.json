@@ -1,5 +1,6 @@
 {
     "experiment_type": "simple_concatenation",
     "test_file": "data/dev__highlights.csv",
-    "output_dir": "models/predict/eval/simple_concatenation"
+    "output_dir": "models/predict/eval/simple_concatenation",
+    "eval_with_summac": false
 }

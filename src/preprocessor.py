@@ -9,7 +9,7 @@ class Preprocessor:
     Preprocess inputs and outputs
     """
 
-    def __init__(self, prefix, special_tokens_constants, should_add_highlights: bool):
+    def __init__(self, prefix, special_tokens_constants, should_add_highlights: bool = True):
         self.prefix = prefix
         self.special_tokens_constants = special_tokens_constants
         self.should_add_highlights = should_add_highlights
@@ -128,7 +128,8 @@ def merge_overlapping_intervals(intervals: List[Tuple[int, int]]) -> List[Tuple[
         # if the list of merged intervals is empty or if the current
         # interval does not overlap with the previous and it's not its consecutive, simply append it.
         if not merged or merged[-1][1] + 1 < interval[0]:
-            merged.append(interval)
+            interval_copy = list(interval) if isinstance(interval, tuple) else interval.copy()
+            merged.append(interval_copy)
         # otherwise, there is overlap, so we merge the current and previous
         # intervals.
         else:

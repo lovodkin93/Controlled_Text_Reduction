@@ -270,6 +270,10 @@ class DataTrainingArguments:
     should_preprocess_add_highlights: bool = field(
         default=True
     )
+    # NEW from original script
+    eval_with_summac: bool = field(
+        default=True
+    )
 
 
     def __post_init__(self):
@@ -664,7 +668,9 @@ def main():
 
     # Metric
     metric = load_metric("rouge")
-    summac_model = get_summac_model()
+    summac_model = None
+    if data_args.eval_with_summac:
+        summac_model = get_summac_model()
 
     def postprocess_text(preds, labels):
         preds = [pred.strip() for pred in preds]
@@ -693,7 +699,9 @@ def main():
 
         # NEW from original script
         result = compute_rouge_metrics(decoded_preds, decoded_labels, metric)
-        # result.update(compute_summac_metrics(decoded_labels, decoded_preds, summac_model))
+        if data_args.eval_with_summac:
+            logger.info("Start computing SummaC")
+            result.update(compute_summac_metrics(decoded_labels, decoded_preds, summac_model))
 
         prediction_lens = [np.count_nonzero(
             pred != tokenizer.pad_token_id) for pred in preds]
@@ -779,6 +787,7 @@ def main():
 
         if trainer.is_world_process_zero():
             if training_args.predict_with_generate:
+                logger.info("Start analyzing predictions")
                 # NEW from original script
                 PredictionsAnalyzer(tokenizer, training_args.output_dir, summac_model).write_predictions_to_file(predict_results.predictions, prep_predict_dataset, pd.DataFrame(predict_dataset.to_dict()))
 
