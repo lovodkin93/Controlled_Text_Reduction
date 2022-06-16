@@ -41,6 +41,12 @@ def concatenate_highlights_row(row):
     highlight_sub_texts = []
     previous_sentence_id = None
     for highlight_span in highlighted_spans:
+        highlight_sub_text = row['doc_text'][highlight_span[0]: highlight_span[1]].strip()
+
+        # Skip subtexts that were only a space or \n (caused if the user ends the highlight in \n)
+        if highlight_sub_text == "":
+            continue
+
         # Decide which sentence the span is in based on where it starts
         current_sentence_id = _find_idx_in_sentence_dict(highlight_span[0], sents_ranges)
         # spans should not cross sentences (taken care of earlier)
@@ -54,8 +60,7 @@ def concatenate_highlights_row(row):
             highlight_sub_texts = []
         
         previous_sentence_id = current_sentence_id
-        highligh_sub_text = row['doc_text'][highlight_span[0]: highlight_span[1]]
-        highlight_sub_texts.append(highligh_sub_text)
+        highlight_sub_texts.append(highlight_sub_text)
 
 
     if any(highlight_sub_texts):
@@ -101,9 +106,23 @@ def _text_to_sentences_ranges(text: str) -> dict:
     # Use NLTK tokenizer directly because want the span_tokenize functionality which returns indices
     sents_ranges = []
 
-    for sent in nlp(text).sents:
-        sent_range = (sent.start_char, sent.end_char)
-        sents_ranges.append(sent_range)
+    for spacy_sent in nlp(text).sents:
+        starting_start_char = spacy_sent.start_char
+        starting_end_char = spacy_sent.end_char
+
+        # Help spacy in \n cases
+        split_by_newline = spacy_sent.text.split("\n")
+        for sent in split_by_newline:
+            new_sent_start_char = starting_start_char
+            new_sent_end_char = starting_start_char + len(sent)
+
+            sent_range = (new_sent_start_char, new_sent_end_char)
+            sents_ranges.append(sent_range)
+
+            starting_start_char += len(sent) + 1  # Plus 1 to compensate on the deleted \n
+
+        # Validation
+        assert sent_range[-1] == starting_end_char
 
     offset = 0
     # Spacy doesn't count the last space as a sentence
