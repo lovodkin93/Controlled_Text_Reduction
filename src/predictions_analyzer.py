@@ -22,12 +22,18 @@ class PredictionsAnalyzer:
             self.calculate_rouge_between_gold_n_prediction(objects, objects['predicted'], objects['gold'])
 
         if self.summac_model is not None:
-            # Calculate between input and summaries
+            # Calculate if summaries are entail the input
             self.calculate_summac_between_input_n_summaries(objects, objects['clean_input'], objects['predicted'], prefix="input")
 
-            # Calculate between highlights and summaries
+            # Calculate if input entails the summaries
+            self.calculate_summac_between_input_n_summaries(objects, objects['predicted'], objects['clean_input'], prefix="input_reversed")
+
+            # Calculate if summaries entail the highlights
             highlights_input = concatenate_highlights(df)
             self.calculate_summac_between_input_n_summaries(objects, highlights_input, objects['predicted'], prefix="highlights")
+
+            # Calculate if highlights entails the highlights
+            self.calculate_summac_between_input_n_summaries(objects, objects['predicted'], highlights_input, prefix="highlights_reversed")
 
         self._save_to_file(objects)
 

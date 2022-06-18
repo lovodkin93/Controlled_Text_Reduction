@@ -268,7 +268,17 @@ class DataTrainingArguments:
     )
     # NEW from original script
     should_preprocess_add_highlights: bool = field(
-        default=True
+        default=True,
+        metadata={
+            "help": "Decides whether to add highlight tokens or not"
+        }
+    )
+    # NEW from original script
+    should_preprocess_only_sents_with_highlights: bool = field(
+        default=False,
+        metadata={
+            "help": "Decides whether to keep only sentences with highlights"
+        }
     )
     # NEW from original script
     eval_with_summac: bool = field(
@@ -403,6 +413,7 @@ def main():
     model_args_dict = {}
     model_args_dict.update(model_args.__dict__)
     model_args_dict['max_length'] = data_args.max_target_length  # We must add max_length when setting min_length
+    model_args_dict = { k: v for k,v in model_args_dict.items() if v is not None}  # Important otherwise it might override default values
 
     # Load pretrained model and tokenizer
     #
@@ -451,7 +462,7 @@ def main():
 
     # NEW from original script
     special_tokens_constants = get_special_tokens_constants(is_t5_model)
-    preprocessor = Preprocessor(prefix, special_tokens_constants, data_args.should_preprocess_add_highlights)
+    preprocessor = Preprocessor(prefix, special_tokens_constants, data_args.should_preprocess_add_highlights, data_args.should_preprocess_only_sents_with_highlights)
 
     # NEW from original script
     tokenizer.add_special_tokens({'additional_special_tokens': list(special_tokens_constants.values())})
@@ -552,16 +563,25 @@ def main():
 
     # NEW from original script
     def preprocess_function(examples):
-        # remove pairs where at least one record is None
+        # Orig summarization dataset
+        if data_args.dataset_name is not None:
+            inputs, targets = [], []
+            
+            for i in range(len(examples[text_column])):
+                if examples[text_column][i] is not None and examples[summary_column][i] is not None:
+                    inputs.append(examples[text_column][i])
+                    targets.append(examples[summary_column][i])
 
-        inputs, targets = [], []
-        for i in range(len(examples[text_column])):
-             # NEW from original script
-            inputs.append(preprocessor.preprocess_input(
-                examples['doc_text'][i],
-                examples['highlight_spans'][i]
-                ))
-            targets.append(examples['summary_text'][i])
+            inputs = [prefix + inp for inp in inputs]            
+        else:
+            inputs, targets = [], []
+            for i in range(len(examples[text_column])):
+                # NEW from original script
+                inputs.append(preprocessor.preprocess_input(
+                    examples['doc_text'][i],
+                    examples['highlight_spans'][i]
+                    ))
+                targets.append(examples['summary_text'][i])
 
         model_inputs = tokenizer(
             inputs, max_length=data_args.max_source_length, padding=padding, truncation=True)
@@ -699,9 +719,11 @@ def main():
 
         # NEW from original script
         result = compute_rouge_metrics(decoded_preds, decoded_labels, metric)
-        if data_args.eval_with_summac:
-            logger.info("Start computing SummaC")
-            result.update(compute_summac_metrics(decoded_labels, decoded_preds, summac_model))
+
+        # Calculate SummaC (disabled: takes too long, better to only do it once in the predictions analysis)
+        # if data_args.eval_with_summac:
+        #     logger.info("Start computing SummaC")
+        #     result.update(compute_summac_metrics(decoded_labels, decoded_preds, summac_model))
 
         prediction_lens = [np.count_nonzero(
             pred != tokenizer.pad_token_id) for pred in preds]

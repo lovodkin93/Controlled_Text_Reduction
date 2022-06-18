@@ -3,16 +3,19 @@ from typing import List, Tuple
 import pandas as pd
 import json
 
+from src.concatenate_highlights import combine_text_parts_to_str, concatenate_highlights_row, merge_overlapping_intervals
+
 
 class Preprocessor:
     """
     Preprocess inputs and outputs
     """
 
-    def __init__(self, prefix, special_tokens_constants, should_add_highlights: bool = True):
+    def __init__(self, prefix, special_tokens_constants, should_add_highlights: bool = True, only_sents_with_highlights: bool = False):
         self.prefix = prefix
         self.special_tokens_constants = special_tokens_constants
         self.should_add_highlights = should_add_highlights
+        self.only_sents_with_highlights = only_sents_with_highlights
 
 
     def preprocess_input(self, source_text, highlighted_spans) -> str:
@@ -23,36 +26,50 @@ class Preprocessor:
         # Collect all indices of tokens that need to be added
         idx_to_tokens = defaultdict(list)
 
-        if not self.should_add_highlights:
-            highlighted_spans = []
+        if self.only_sents_with_highlights:
+            text_parts = concatenate_highlights_row({
+                "doc_text": source_text,
+                "highlight_spans": highlighted_spans
+            }, keep_full_sentences=True, return_str=False)
+
+            for text_part in text_parts:
+                if text_part.is_highlight:
+                    text_part.prefix = self.special_tokens_constants['highlight_start']
+                    text_part.postfix = self.special_tokens_constants['highlight_end']
+            final_text = combine_text_parts_to_str(text_parts, keep_full_sentences=True)
         else:
-            if isinstance(highlighted_spans, str):
-                highlighted_spans = json.loads(highlighted_spans)
+            if not self.should_add_highlights:
+                highlighted_spans = []
+            else:
+                if isinstance(highlighted_spans, str):
+                    highlighted_spans = json.loads(highlighted_spans)
 
-            # We don't care about nested highlights / consecutive highlights
-            highlighted_spans = merge_overlapping_intervals(highlighted_spans)
+                # We don't care about nested highlights / consecutive highlights
+                highlighted_spans = merge_overlapping_intervals(highlighted_spans)
 
-            for start, end in highlighted_spans:
-                idx_to_tokens[start].append(self.special_tokens_constants['highlight_start'])
-                idx_to_tokens[end].append(self.special_tokens_constants['highlight_end'])
+                for start, end in highlighted_spans:
+                    idx_to_tokens[start].append(self.special_tokens_constants['highlight_start'])
+                    idx_to_tokens[end].append(self.special_tokens_constants['highlight_end'])
 
-        # Build concatenated text by running over the text in parts
-        source_text_with_highlighted_spans = ""
-        last_idx = 0
-        for idx in sorted(idx_to_tokens.keys()):
-            # Take text up to the current point
-            source_text_with_highlighted_spans += source_text[last_idx:idx]
+            # Build concatenated text by running over the text in parts
+            source_text_with_highlighted_spans = ""
+            last_idx = 0
+            for idx in sorted(idx_to_tokens.keys()):
+                # Take text up to the current point
+                source_text_with_highlighted_spans += source_text[last_idx:idx]
 
-            # Add the necessary tokens
-            tokens = idx_to_tokens[idx]
-            for token in tokens:
-                source_text_with_highlighted_spans += token
-            last_idx = idx
+                # Add the necessary tokens
+                tokens = idx_to_tokens[idx]
+                for token in tokens:
+                    source_text_with_highlighted_spans += token
+                last_idx = idx
 
-        source_text_with_highlighted_spans += source_text[last_idx:]
-        
+            source_text_with_highlighted_spans += source_text[last_idx:]
+
+            final_text = source_text_with_highlighted_spans
+            
         # Return text with prefix
-        return f"{self.prefix}{source_text_with_highlighted_spans}"
+        return f"{self.prefix} {final_text}"
 
 
     def preprocess_output(self, summary_text) -> str:
@@ -115,24 +132,3 @@ def convert_highlight_rows_to_document_highlights(doc_reader, highlight_rows: pd
     return [document_highlight for document_highlights in document_highlights_df.to_list() for document_highlight in document_highlights]
 
 
-def merge_overlapping_intervals(intervals: List[Tuple[int, int]]) -> List[Tuple[int, int]]:
-    """
-    Merges overlapping / consecutive intervals.
-    See more details here https://leetcode.com/problems/merge-intervals
-    """
-
-    intervals = sorted(intervals, key=lambda x: x[0])
-
-    merged = []
-    for interval in intervals:
-        # if the list of merged intervals is empty or if the current
-        # interval does not overlap with the previous and it's not its consecutive, simply append it.
-        if not merged or merged[-1][1] + 1 < interval[0]:
-            interval_copy = list(interval) if isinstance(interval, tuple) else interval.copy()
-            merged.append(interval_copy)
-        # otherwise, there is overlap, so we merge the current and previous
-        # intervals.
-        else:
-            merged[-1][1] = max(merged[-1][1], interval[1])
-
-    return merged
