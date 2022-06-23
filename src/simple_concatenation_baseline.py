@@ -38,7 +38,8 @@ def main(config: dict, summaries_to_test_key: str):
     logging.info("Evaluating...")
     # Calc rouge
     metric = load_metric("rouge")
-    result = compute_rouge_metrics(summaries_to_test, summaries, metric)
+    result = compute_rouge_metrics(summaries_to_test, summaries, metric, prefix="gold")
+    # result.update(compute_rouge_metrics(summaries_to_test, summaries, metric, prefix="gold_content_", should_filter_function_words=True))
 
     # Calc Summac
     summac_model = None
@@ -50,4 +51,4 @@ def main(config: dict, summaries_to_test_key: str):
     logging.info("Analyzing predictions...")
 
     # Extract predictions file
-    PredictionsAnalyzer(None, config['output_dir'], summac_model).write_predictions_to_file(summaries_to_test, inputs, df, is_tokenized=False)
+    PredictionsAnalyzer(None, config['output_dir'], summac_model, metric).write_predictions_to_file(summaries_to_test, inputs, df, is_tokenized=False)

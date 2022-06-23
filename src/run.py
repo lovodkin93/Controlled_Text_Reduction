@@ -36,6 +36,7 @@ from transformers.trainer_utils import get_last_checkpoint
 from transformers.utils import check_min_version, is_offline_mode
 from transformers.utils.versions import require_version
 from src.compute_metrics import compute_rouge_metrics, compute_summac_metrics
+from src.concatenate_highlights import concatenate_highlights
 from src.freeze_embeds import freeze_embeds
 from src.predictions_analyzer import PredictionsAnalyzer
 
@@ -281,6 +282,13 @@ class DataTrainingArguments:
         }
     )
     # NEW from original script
+    should_preprocess_keep_only_highlights: bool = field(
+        default=False,
+        metadata={
+            "help": "Decides whether to keep only highlights"
+        }
+    )
+    # NEW from original script
     eval_with_summac: bool = field(
         default=True
     )
@@ -462,7 +470,7 @@ def main():
 
     # NEW from original script
     special_tokens_constants = get_special_tokens_constants(is_t5_model)
-    preprocessor = Preprocessor(prefix, special_tokens_constants, data_args.should_preprocess_add_highlights, data_args.should_preprocess_only_sents_with_highlights)
+    preprocessor = Preprocessor(prefix, special_tokens_constants, data_args.should_preprocess_add_highlights, data_args.should_preprocess_only_sents_with_highlights, data_args.should_preprocess_keep_only_highlights)
 
     # NEW from original script
     tokenizer.add_special_tokens({'additional_special_tokens': list(special_tokens_constants.values())})
@@ -702,7 +710,7 @@ def main():
 
         return preds, labels
 
-    def compute_metrics(eval_preds):
+    def compute_metrics(eval_preds, is_training: bool):
         preds, labels = eval_preds
         if isinstance(preds, tuple):
             preds = preds[0]
@@ -718,7 +726,13 @@ def main():
             decoded_preds, decoded_labels)
 
         # NEW from original script
-        result = compute_rouge_metrics(decoded_preds, decoded_labels, metric)
+        result = compute_rouge_metrics(decoded_preds, decoded_labels, metric, prefix="gold")
+        result.update(compute_rouge_metrics(decoded_preds, decoded_labels, metric, prefix="gold_content_", should_filter_function_words=True))
+        if not is_training:
+            df = pd.DataFrame(predict_dataset.to_dict())
+            highlights = concatenate_highlights(df)
+            result.update(compute_rouge_metrics(decoded_preds, highlights, metric, prefix="highlights"))
+            result.update(compute_rouge_metrics(decoded_preds, highlights, metric, prefix="highlights_content", should_filter_function_words=True))
 
         # Calculate SummaC (disabled: takes too long, better to only do it once in the predictions analysis)
         # if data_args.eval_with_summac:
@@ -731,6 +745,10 @@ def main():
 
         return result
 
+    # NEW from original script (if training compute only necessary metrics, otherwise compute more)
+    compute_metrics_for_train = lambda *args, **kwargs: compute_metrics(*args, **kwargs, is_training=True)
+    compute_metrics_for_eval = lambda *args, **kwargs: compute_metrics(*args, **kwargs, is_training=False)
+
     # Initialize our Trainer
     trainer = Seq2SeqTrainer(
         model=model,
@@ -739,7 +757,7 @@ def main():
         eval_dataset=eval_dataset if training_args.do_eval else None,
         tokenizer=tokenizer,
         data_collator=data_collator,
-        compute_metrics=compute_metrics if training_args.predict_with_generate else None,
+        compute_metrics=compute_metrics_for_train if training_args.predict_with_generate else None,
     )
 
     # NEW from original script (if received config file, save it with the model)
@@ -810,8 +828,16 @@ def main():
         if trainer.is_world_process_zero():
             if training_args.predict_with_generate:
                 logger.info("Start analyzing predictions")
-                # NEW from original script
-                PredictionsAnalyzer(tokenizer, training_args.output_dir, summac_model).write_predictions_to_file(predict_results.predictions, prep_predict_dataset, pd.DataFrame(predict_dataset.to_dict()))
+
+                # NEW from original script (aggregate elaborated predictions)
+                result = compute_metrics_for_eval((predict_results.predictions, predict_results.label_ids))
+                eval_output_prediction_file = os.path.join(training_args.output_dir, "elaborated_predictions.json")
+                with open(eval_output_prediction_file, "w") as f:
+                    f.write(json.dumps(result))
+                print(result)
+
+                # NEW from original script (per sample prediction)
+                PredictionsAnalyzer(tokenizer, training_args.output_dir, summac_model, metric).write_predictions_to_file(predict_results.predictions, prep_predict_dataset, pd.DataFrame(predict_dataset.to_dict()))
 
     kwargs = {"finetuned_from": model_args.model_name_or_path,
               "tasks": "summarization"}

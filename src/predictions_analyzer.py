@@ -9,40 +9,50 @@ from src.concatenate_highlights import concatenate_highlights
 
 
 class PredictionsAnalyzer:
-    def __init__(self, tokenizer, output_dir: str, summac_model) -> None:
+    """
+    Extracts an analyzed result for each prediction instead of an aggregate of all predictions
+    """
+
+    def __init__(self, tokenizer, output_dir: str, summac_model, rouge_metric) -> None:
         self.tokenizer = tokenizer
         self.output_dir = output_dir
         self.summac_model = summac_model
+        self.rouge_metric = rouge_metric
 
     def write_predictions_to_file(self, predictions, dataset, df, is_tokenized=True):
         objects = self._clean_predictions(predictions, dataset, is_tokenized)
 
-        # Calculate between gold and summaries (if there is gold)
+        # Calculate rouge between gold and summaries (if there is gold)
         if objects.get('gold') is not None:
-            self.calculate_rouge_between_gold_n_prediction(objects, objects['predicted'], objects['gold'])
+            self.calculate_rouge_between_gold_n_prediction(objects, objects['predicted'], objects['gold'], prefix="gold")
+
+        # Calculate rouge between input and summary
+        highlights_input = concatenate_highlights(df)
+        self.calculate_rouge_between_gold_n_prediction(objects, objects['predicted'], highlights_input, prefix="highlights")
 
         if self.summac_model is not None:
             # Calculate if summaries are entail the input
             self.calculate_summac_between_input_n_summaries(objects, objects['clean_input'], objects['predicted'], prefix="input")
 
-            # Calculate if input entails the summaries
-            self.calculate_summac_between_input_n_summaries(objects, objects['predicted'], objects['clean_input'], prefix="input_reversed")
+            # # Calculate if input entails the summaries
+            # self.calculate_summac_between_input_n_summaries(objects, objects['predicted'], objects['clean_input'], prefix="input_reversed")
 
             # Calculate if summaries entail the highlights
-            highlights_input = concatenate_highlights(df)
             self.calculate_summac_between_input_n_summaries(objects, highlights_input, objects['predicted'], prefix="highlights")
 
-            # Calculate if highlights entails the highlights
-            self.calculate_summac_between_input_n_summaries(objects, objects['predicted'], highlights_input, prefix="highlights_reversed")
+            # # Calculate if highlights entails the highlights
+            # self.calculate_summac_between_input_n_summaries(objects, objects['predicted'], highlights_input, prefix="highlights_reversed")
 
         self._save_to_file(objects)
 
-    def calculate_rouge_between_gold_n_prediction(self, objects, decoded_predictions, gold):
-        # Add rouge per prediction
-        metric = load_metric("rouge")
-        result_per_pred = metric.compute(predictions=decoded_predictions, references=gold, use_stemmer=True, use_aggregator=False)
-        objects['rouge1'] = [x.fmeasure for x in result_per_pred['rouge1']]
-        objects['rouge2'] = [x.fmeasure for x in result_per_pred['rouge2']]
+    def calculate_rouge_between_gold_n_prediction(self, objects, decoded_predictions, gold, prefix: str):
+        result_per_pred = self.rouge_metric.compute(predictions=decoded_predictions, references=gold, use_stemmer=True, use_aggregator=False)
+        objects[f'{prefix}_rouge1'] = [x.fmeasure for x in result_per_pred['rouge1']]
+        objects[f'{prefix}_rouge1_precision'] = [x.precision for x in result_per_pred['rouge1']]
+        objects[f'{prefix}_rouge1_recall'] = [x.recall for x in result_per_pred['rouge1']]
+        objects[f'{prefix}_rouge2'] = [x.fmeasure for x in result_per_pred['rouge2']]
+        objects[f'{prefix}_rouge2_precision'] = [x.precision for x in result_per_pred['rouge2']]
+        objects[f'{prefix}_rouge2_recall'] = [x.recall for x in result_per_pred['rouge2']]
 
     def calculate_summac_between_input_n_summaries(self, objects, inputs, summaries, prefix: str):
         """

@@ -22,7 +22,7 @@ def preprocess_from_highlight_rows_to_document_rows(doc_data_dir: str, train_fil
 
     docs_and_highlighted_spans = convert_highlight_rows_to_document_highlights(doc_reader, highlight_rows)
 
-    highlights_df = pd.DataFrame(docs_and_highlighted_spans, columns=["doc_text", "summary_text", "highlight_spans"])
+    highlights_df = pd.DataFrame(docs_and_highlighted_spans)
     # Convert column to proper json before dumping to file
     highlights_df['highlight_spans'] = highlights_df['highlight_spans'].apply(json.dumps)
     highlights_df.to_csv(output_file_path, index=False)

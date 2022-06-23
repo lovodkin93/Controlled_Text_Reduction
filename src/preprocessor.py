@@ -11,12 +11,12 @@ class Preprocessor:
     Preprocess inputs and outputs
     """
 
-    def __init__(self, prefix, special_tokens_constants, should_add_highlights: bool = True, only_sents_with_highlights: bool = False):
+    def __init__(self, prefix, special_tokens_constants, should_add_highlights: bool = True, only_sents_with_highlights: bool = False, keep_only_highlights: bool = False):
         self.prefix = prefix
         self.special_tokens_constants = special_tokens_constants
         self.should_add_highlights = should_add_highlights
         self.only_sents_with_highlights = only_sents_with_highlights
-
+        self.keep_only_highlights = keep_only_highlights
 
     def preprocess_input(self, source_text, highlighted_spans) -> str:
         """
@@ -26,7 +26,12 @@ class Preprocessor:
         # Collect all indices of tokens that need to be added
         idx_to_tokens = defaultdict(list)
 
-        if self.only_sents_with_highlights:
+        if self.keep_only_highlights:
+            final_text = concatenate_highlights_row({
+                "doc_text": source_text,
+                "highlight_spans": highlighted_spans
+            }, keep_full_sentences=False, return_str=True)
+        elif self.only_sents_with_highlights:
             text_parts = concatenate_highlights_row({
                 "doc_text": source_text,
                 "highlight_spans": highlighted_spans
@@ -124,7 +129,13 @@ def convert_highlight_rows_to_document_highlights(doc_reader, highlight_rows: pd
         highlight_spans = doc_rows['docSpanOffsets'].apply(convert_row_spans_str_to_list_of_highlights)
         flattened_highlight_spans = [span for spans in highlight_spans.to_list() for span in spans]
 
-        return [(doc, summary, flattened_highlight_spans)]
+        return [{
+            # "doc_id": any_row['documentFile'],
+            # "example_id": any_row['summaryFile'],
+            "doc_text": doc,
+            "summary_text": summary,
+            "highlight_spans": flattened_highlight_spans
+        }]
 
 
     document_highlights_df = highlight_rows.groupby('summaryFile').apply(handle_document_rows)

@@ -4,7 +4,9 @@ from json_minify import json_minify
 import os
 from pathlib import Path
 import re
+import string
 
+NON_CONTENT_POS = ["AUX", "DET", "ADP", "SCONJ", "CONJ", "CCONJ", "PUNCT", "SYM", "X", "SPACE"]
 
 def prepare_config_for_hf() -> dict:
     """
@@ -42,3 +44,9 @@ def get_summac_model():
     from summac.model_summac import SummaCZS
     model = SummaCZS(granularity="sentence", model_name="vitc", use_con=False)
     return model
+
+import spacy
+nlp = spacy.load("en_core_web_sm")
+
+def filter_function_words(text: str) -> str:
+    return " ".join([token.text for token in nlp(text) if token.text not in string.punctuation and token.pos_ not in NON_CONTENT_POS])
