@@ -24,7 +24,7 @@
     "overwrite_output_dir": "true",
     "train_file": "data/train__highlights.csv",
     "save_total_limit": 2,  // Save only last one and best one
-    "metric_for_best_model": "eval_rouge1",
+    "metric_for_best_model": "eval_gold_rouge1",
     "load_best_model_at_end": true,
     // Eval while training
     "do_eval": true,

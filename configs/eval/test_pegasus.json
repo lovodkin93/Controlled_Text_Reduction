@@ -1,23 +1,20 @@
 {
     // Model config
     "experiment_type": "seq2seq",      
-    // "model_name_or_path": "./models/led-base-16384/4096__global_on_highlights/checkpoint-400",
-    "model_name_or_path": "./models/led-base-16384/4096__no_highlights/checkpoint-1000",
-    "output_dir": "models/predict/test/model",
-    "max_source_length": 4096,
+    // "model_name_or_path": "./models/pegasus_cnn_dm/1024__with_highlights/checkpoint-1200",
+    // "model_name_or_path": "./models/pegasus_cnn_dm/1024__with_highlights__no_sent_filter/checkpoint-1000",
+    // "model_name_or_path": "./models/pegasus_cnn_dm/1024__no_highlights/checkpoint-300",
+    "model_name_or_path": "./models/pegasus_cnn_dm/1024__only_highlights/checkpoint-700",    
+    "output_dir": "models/predict/pegasus/test",
+    "max_source_length": 1024,
     "max_target_length": 512,  // Lowering this will yield unreliable rouge results (based only on the limited summary)!
     "fp16": true, // Lower memory consumption and faster training (not supported based on docs)
     "overwrite_cache": true,  // add this if getting the error CUBLAS_STATUS_ALLOC_FAILED
-    // "eval_with_summac": false,
-    // LED
-    "add_global_attention": true,
-    // "add_global_attention_on_highlights": true,
-    "should_preprocess_add_highlights": false,  // used for no highlights
-    "gradient_checkpointing": true, // Slower but allows more memory to be allocated, recommended by official page
-    "min_length": 100,
-    "length_penalty": 2.0,
-    "early_stopping": "True",
-    "no_repeat_ngram_size": 3,
+    "eval_with_summac": false,
+    // Pegasus
+    "should_preprocess_add_highlights": false,
+    "should_preprocess_only_sents_with_highlights": false,
+    "should_preprocess_keep_only_highlights": true,
     // Train config                
     "overwrite_output_dir": "true",
     "validation_file": "data/test__highlights.csv", // Necessary just not to crash run.py, doesn't do anything
@@ -26,7 +23,7 @@
     "predict_with_generate": "true",
     "test_file": "data/test__highlights.csv",
     "per_device_eval_batch_size": 1,  // Sometimes can be larger than training batch size (no grad is activated)
-    "num_beams": 2,  // Lever to play with if getting OOM
+    "num_beams": 4,  // Lever to play with if getting OOM
     // Cancel Wandb
     "report_to": "none"
 }

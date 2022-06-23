@@ -15,7 +15,7 @@
     "no_repeat_ngram_size": 3,
     "fp16": true, // Recommended by docs
     "fp16_backend": "apex",  // Recommended by docs
-    "gradient_accumulation": 4, // will accumulate gradient_accumulation_num * train_batch_size * num_gpus
+    "gradient_accumulation_steps": 2, // will accumulate gradient_accumulation_num * train_batch_size * num_gpus
     // Predict
     "predict_with_generate": "true",  
     "num_beams": 2,  // Lever to play with if getting OOM, was suggested in docs
@@ -25,7 +25,7 @@
     "overwrite_output_dir": "true",
     "train_file": "data/train__highlights.csv",
     "save_total_limit": 2,  // Save only last one and best one
-    "metric_for_best_model": "eval_rouge1",
+    "metric_for_best_model": "eval_gold_rouge1",
     // Eval while training
     "do_eval": true,
     "per_device_eval_batch_size": 1,  // Sometimes can be larger than training batch size (no grad is activated)
