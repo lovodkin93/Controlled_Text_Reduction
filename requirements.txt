@@ -1,4 +1,5 @@
 git+https://github.com/huggingface/transformers@2bf95e2  # Necessary to install from source
+aiohttp
 pandas
 nltk
 datasets >= 1.8.0
