@@ -1,0 +1,9 @@
+data/train_CNNDM.csv filter=lfs diff=lfs merge=lfs -text
+data/train__filtered_highlights.csv filter=lfs diff=lfs merge=lfs -text
+data/dev_DUC-2001-2002.csv filter=lfs diff=lfs merge=lfs -text
+data/dev__highlights.csv filter=lfs diff=lfs merge=lfs -text
+data/test_DUC-2001-2002.csv filter=lfs diff=lfs merge=lfs -text
+data/test__highlights.csv filter=lfs diff=lfs merge=lfs -text
+data/test__highlights__mixed.csv filter=lfs diff=lfs merge=lfs -text
+data/train_DUC-2001-2002.csv filter=lfs diff=lfs merge=lfs -text
+data/train__highlights.csv filter=lfs diff=lfs merge=lfs -text
