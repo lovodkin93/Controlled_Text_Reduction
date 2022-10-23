@@ -14,6 +14,9 @@ launch.json
 # Models
 models/
 
+# Data
+data/
+
 # Cache files
 __pycache__
 .pytest_cache
