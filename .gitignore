@@ -13,9 +13,11 @@ launch.json
 
 # Models
 models/
+models/*
 
 # Data
 data/
+data/*
 
 # Cache files
 __pycache__
