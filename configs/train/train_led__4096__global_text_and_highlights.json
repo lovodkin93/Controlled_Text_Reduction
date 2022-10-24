@@ -4,9 +4,11 @@
     "model_name_or_path": "allenai/led-base-16384",
     "max_source_length": 4096,
     "max_target_length": 512,
-    "output_dir": "models/led-base-16384/4096__no_global_on_highlights",
+    "output_dir": "models/led-base-16384/LED_text_and_highlights",
     "add_global_attention": true,
-    "resume_from_checkpoint": true, // Useful if training crashed
+    "add_global_attention_on_highlights": true,
+    "overwrite_cache": true,  // add this if getting the error CUBLAS_STATUS_ALLOC_FAILED
+    // "resume_from_checkpoint": true, // Useful if training crashed
     // Model configs copied from the colab to finetune led https://colab.research.google.com/drive/12LjJazBl7Gam0XBPy_y0CTOJZeZ34c2v?usp=sharing#scrollTo=kQOaX6eRJXkM
     "gradient_checkpointing": true, // Slower but allows more memory to be allocated, recommended by official page
     "min_length": 100,
@@ -14,18 +16,20 @@
     "early_stopping": "True",
     "no_repeat_ngram_size": 3,
     "fp16": true, // Recommended by docs
-    "fp16_backend": "apex",  // Recommended by docs
+    // "fp16_backend": "apex",  // Recommended by docs
+    "half_precision_backend": "amp",
     "gradient_accumulation_steps": 2, // will accumulate gradient_accumulation_num * train_batch_size * num_gpus
     // Predict
     "predict_with_generate": "true",  
     "num_beams": 2,  // Lever to play with if getting OOM, was suggested in docs
     // Train
     "do_train": true,
-    "per_device_train_batch_size": 2,
+    "per_device_train_batch_size": 4,
     "overwrite_output_dir": "true",
     "train_file": "data/train__highlights.csv",
     "save_total_limit": 2,  // Save only last one and best one
     "metric_for_best_model": "eval_gold_rouge1",
+    "load_best_model_at_end": true,
     // Eval while training
     "do_eval": true,
     "per_device_eval_batch_size": 1,  // Sometimes can be larger than training batch size (no grad is activated)
@@ -37,5 +41,5 @@
     "num_train_epochs": 10.0,
     // Wandb
     "report_to": "wandb",
-    "run_name": "led-base-16384/4096__no_global_on_highlights"
+    "run_name": "led-base-16384/4096__global_on_highlights"
 }

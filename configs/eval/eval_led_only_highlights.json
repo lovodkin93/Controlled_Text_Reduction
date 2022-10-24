@@ -1,17 +1,20 @@
 {
     // Model config
     "experiment_type": "seq2seq",      
-    "model_name_or_path": "./models/led-base-16384/4096__global_on_highlights/checkpoint-400",
-    // "model_name_or_path": "./models/led-base-16384/4096__no_highlights/checkpoint-700",
-    "output_dir": "models/predict/eval/model",
+    "model_name_or_path": "/home/nlp/sloboda1/controlled_reduction/controlled_reduction_models_dir/models/led-base-16384/LED_only_highlights/checkpoint-500",
+    // "source_prefix": "summarize: ", // Remove for pegasus
+    "output_dir": "models/predict/eval/LED_only_highlights",
     "max_source_length": 4096,
     "max_target_length": 512,  // Lowering this will yield unreliable rouge results (based only on the limited summary)!
-    "fp16": true, // Lower memory consumption and faster training
+    "fp16": true, // Lower memory consumption and faster training (not supported based on docs)
+    "overwrite_cache": true,  // add this if getting the error CUBLAS_STATUS_ALLOC_FAILED
     // "eval_with_summac": false,
     // LED
     "add_global_attention": true,
     "add_global_attention_on_highlights": true,
-    // "should_preprocess_add_highlights": false,  // used for no highlights
+    "should_preprocess_add_highlights": false,
+    "should_preprocess_only_sents_with_highlights": false,
+    "should_preprocess_keep_only_highlights": true,
     "gradient_checkpointing": true, // Slower but allows more memory to be allocated, recommended by official page
     "min_length": 100,
     "length_penalty": 2.0,
@@ -28,4 +31,6 @@
     "num_beams": 2,  // Lever to play with if getting OOM
     // Cancel Wandb
     "report_to": "none"
+    // Debug
+    // "max_predict_samples": 24
 }

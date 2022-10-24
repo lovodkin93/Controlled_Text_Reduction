@@ -1,0 +1,6 @@
+{
+    "train_file_highlight_rows": "/home/nlp/sloboda1/controlled_reduction/datasets/pretrain/train/CNN_DM_trainset_alignments.csv",
+    "doc_data_dir": "/home/nlp/sloboda1/controlled_reduction/datasets/pretrain/train/data",
+    "output_file_path": "data/train_CNNDM_full__highlights.csv",
+    "do_preprocess": "true"
+}
