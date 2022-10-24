@@ -66,8 +66,8 @@ python -m src.run_experiments configs/eval/<CONFIG_TEST_FILE>
 ```
 You can find examples of `<CONFIG_TEST_FILE>` under `configs/eval/`. 
 You have different options:
-1. To test a simple concatenation, follow `test_simple_concatenation` (or `eval_simple_concatenation.json` for the devset).
+1. To test a simple concatenation, follow `test_simple_concatenation.json` (or `eval_simple_concatenation.json` for the devset).
 2. To test a model which receives as input text+highlights, follow `test_led_text_and_highlights.json` (or `eval_led_text_and_highlights.json` for the devset).
 3. To test a model which receives as input only text (without highlights), follow `test_led_no_highlights.json` (or `eval_led_no_highlights.json` for the devset).
 4. To test a model which receives as input only highlights, follow `test_led_only_highlights.json` (or `eval_led_only_highlights.json` for the devset).
-5. To run a mixed experiment, where highlights are paired with a different summary of the same document, follow `test_led_mixed`.
+5. To run a mixed experiment, where highlights are paired with a different summary of the same document, follow `test_led_mixed.json`.
