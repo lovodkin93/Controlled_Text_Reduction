@@ -71,3 +71,20 @@ You have different options:
 3. To test a model which receives as input only text (without highlights), follow `test_led_no_highlights.json` (or `eval_led_no_highlights.json` for the devset).
 4. To test a model which receives as input only highlights, follow `test_led_only_highlights.json` (or `eval_led_only_highlights.json` for the devset).
 5. To run a mixed experiment, where highlights are paired with a different summary of the same document, follow `test_led_mixed.json`.
+
+Citation
+========
+If you find the Controlled Text Reduction dataset useful in your research, please cite the following paper:
+```
+@misc{https://doi.org/10.48550/arxiv.2210.13449,
+  doi = {10.48550/ARXIV.2210.13449},
+  url = {https://arxiv.org/abs/2210.13449},
+  author = {Slobodkin, Aviv and Roit, Paul and Hirsch, Eran and Ernst, Ori and Dagan, Ido},
+  keywords = {Computation and Language (cs.CL), FOS: Computer and information sciences, FOS: Computer and information sciences},
+  title = {Controlled Text Reduction},
+  publisher = {arXiv},
+  year = {2022},
+  copyright = {Creative Commons Zero v1.0 Universal}
+}
+
+```
