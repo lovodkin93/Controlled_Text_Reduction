@@ -74,7 +74,7 @@ You have different options:
 
 Citation
 ========
-If you find the Controlled Text Reduction dataset useful in your research, please cite the following paper:
+If you find this repository useful in your research, please cite the following paper:
 ```
 @misc{https://doi.org/10.48550/arxiv.2210.13449,
   doi = {10.48550/ARXIV.2210.13449},
