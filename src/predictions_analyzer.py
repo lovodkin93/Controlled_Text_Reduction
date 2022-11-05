@@ -47,12 +47,12 @@ class PredictionsAnalyzer:
 
     def calculate_rouge_between_gold_n_prediction(self, objects, decoded_predictions, gold, prefix: str):
         result_per_pred = self.rouge_metric.compute(predictions=decoded_predictions, references=gold, use_stemmer=True, use_aggregator=False)
-        objects[f'{prefix}_rouge1'] = [x.fmeasure for x in result_per_pred['rouge1']]
-        objects[f'{prefix}_rouge1_precision'] = [x.precision for x in result_per_pred['rouge1']]
-        objects[f'{prefix}_rouge1_recall'] = [x.recall for x in result_per_pred['rouge1']]
-        objects[f'{prefix}_rouge2'] = [x.fmeasure for x in result_per_pred['rouge2']]
-        objects[f'{prefix}_rouge2_precision'] = [x.precision for x in result_per_pred['rouge2']]
-        objects[f'{prefix}_rouge2_recall'] = [x.recall for x in result_per_pred['rouge2']]
+        objects[f'{prefix}_rouge1'] = [x for x in result_per_pred['rouge1']]
+        # objects[f'{prefix}_rouge1_precision'] = [x.precision for x in result_per_pred['rouge1']]
+        # objects[f'{prefix}_rouge1_recall'] = [x.recall for x in result_per_pred['rouge1']]
+        objects[f'{prefix}_rouge2'] = [x for x in result_per_pred['rouge2']]
+        # objects[f'{prefix}_rouge2_precision'] = [x.precision for x in result_per_pred['rouge2']]
+        # objects[f'{prefix}_rouge2_recall'] = [x.recall for x in result_per_pred['rouge2']]
 
     def calculate_summac_between_input_n_summaries(self, objects, inputs, summaries, prefix: str):
         """

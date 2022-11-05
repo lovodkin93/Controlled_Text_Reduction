@@ -11,12 +11,13 @@ class Preprocessor:
     Preprocess inputs and outputs
     """
 
-    def __init__(self, prefix, special_tokens_constants, should_add_highlights: bool = True, only_sents_with_highlights: bool = False, keep_only_highlights: bool = False):
+    def __init__(self, prefix, special_tokens_constants, should_add_highlights: bool = True, only_sents_with_highlights: bool = False, keep_only_highlights: bool = False, add_planning_on_concatenation: bool = False):
         self.prefix = prefix
         self.special_tokens_constants = special_tokens_constants
         self.should_add_highlights = should_add_highlights
         self.only_sents_with_highlights = only_sents_with_highlights
         self.keep_only_highlights = keep_only_highlights
+        self.add_planning_on_concatenation = add_planning_on_concatenation
 
     def preprocess_input(self, source_text, highlighted_spans) -> str:
         """
@@ -94,9 +95,16 @@ def get_special_tokens_constants(is_t5_model: bool) -> dict:
         # T5 model has 100 special tokens by default
         special_tokens_constants['highlight_start'] = "<extra_id_1>"
         special_tokens_constants['highlight_end'] = "<extra_id_2>"
+        special_tokens_constants['is_concatenation'] = "<extra_id_3>"
+        # special_tokens_constants['is_summary'] = "<extra_id_4>"
+        # special_tokens_constants['highlight_delimeter'] = "<extra_id_5>"
     else:
         special_tokens_constants['highlight_start'] = "<highlight_start>"
         special_tokens_constants['highlight_end'] = "<highlight_end>"
+        special_tokens_constants['is_concatenation'] = "<is_concatenation>"
+        # special_tokens_constants['is_summary'] = "<is_summary>"
+        # special_tokens_constants['highlight_delimeter'] = "<highlight_delimeter>"
+
     return special_tokens_constants
 
 

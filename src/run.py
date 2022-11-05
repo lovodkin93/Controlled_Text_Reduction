@@ -42,7 +42,7 @@ from src.predictions_analyzer import PredictionsAnalyzer
 
 from src.preprocessor import Preprocessor, get_special_tokens_constants
 from src.utils import get_summac_model
-
+import evaluate
 
 # Will error if the minimal version of Transformers is not installed. Remove at your own risks.
 check_min_version("4.19.0.dev0")
@@ -293,6 +293,12 @@ class DataTrainingArguments:
         default=True
     )
 
+    # NEW from original script
+    add_planning_on_concatenation: bool = field(
+        default=False
+    )
+
+
 
     def __post_init__(self):
         if self.dataset_name is None and self.train_file is None and self.validation_file is None:
@@ -470,7 +476,7 @@ def main():
 
     # NEW from original script
     special_tokens_constants = get_special_tokens_constants(is_t5_model)
-    preprocessor = Preprocessor(prefix, special_tokens_constants, data_args.should_preprocess_add_highlights, data_args.should_preprocess_only_sents_with_highlights, data_args.should_preprocess_keep_only_highlights)
+    preprocessor = Preprocessor(prefix, special_tokens_constants, data_args.should_preprocess_add_highlights, data_args.should_preprocess_only_sents_with_highlights, data_args.should_preprocess_keep_only_highlights, data_args.add_planning_on_concatenation)
 
     # NEW from original script
     tokenizer.add_special_tokens({'additional_special_tokens': list(special_tokens_constants.values())})
@@ -585,10 +591,8 @@ def main():
             inputs, targets = [], []
             for i in range(len(examples[text_column])):
                 # NEW from original script
-                inputs.append(preprocessor.preprocess_input(
-                    examples['doc_text'][i],
-                    examples['highlight_spans'][i]
-                    ))
+                curr_input = preprocessor.preprocess_input(examples['doc_text'][i], examples['highlight_spans'][i])
+                inputs.append(curr_input)
                 targets.append(examples['summary_text'][i])
 
         model_inputs = tokenizer(
@@ -695,7 +699,7 @@ def main():
     )
 
     # Metric
-    metric = load_metric("rouge")
+    metric = evaluate.load("rouge") # load_metric("rouge") # AVIVSL: updated this
     summac_model = None
     if data_args.eval_with_summac:
         summac_model = get_summac_model()
