@@ -16,6 +16,7 @@ if you haven't installed yet virtualenv, and then run:
 python3 -m venv venvs/controlled_text_reduction_env
 source venvs/controlled_text_reduction_env/bin/activate
 python3 -m pip install -r requirements.txt
+python -m spacy download en_core_web_sm
 ```
 
 ## Preprocess Data
