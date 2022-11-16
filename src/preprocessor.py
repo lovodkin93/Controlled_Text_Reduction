@@ -2,7 +2,7 @@ from collections import defaultdict
 from typing import List, Tuple
 import pandas as pd
 import json
-
+import re
 from src.concatenate_highlights import combine_text_parts_to_str, concatenate_highlights_row, merge_overlapping_intervals
 
 
@@ -11,13 +11,15 @@ class Preprocessor:
     Preprocess inputs and outputs
     """
 
-    def __init__(self, prefix, special_tokens_constants, should_add_highlights: bool = True, only_sents_with_highlights: bool = False, keep_only_highlights: bool = False, add_planning_on_concatenation: bool = False):
+    def __init__(self, prefix, special_tokens_constants, should_add_highlights: bool = True, only_sents_with_highlights: bool = False, keep_only_highlights: bool = False, add_planning_on_concatenation: bool = False, add_highlight_delim_planning: bool = True, add_highlight_labels_to_planning: bool = True):
         self.prefix = prefix
         self.special_tokens_constants = special_tokens_constants
         self.should_add_highlights = should_add_highlights
         self.only_sents_with_highlights = only_sents_with_highlights
         self.keep_only_highlights = keep_only_highlights
         self.add_planning_on_concatenation = add_planning_on_concatenation
+        self.add_highlight_delim_planning = add_highlight_delim_planning
+        self.add_highlight_labels_to_planning = add_highlight_labels_to_planning
 
     def preprocess_input(self, source_text, highlighted_spans) -> str:
         """
@@ -78,12 +80,19 @@ class Preprocessor:
         return f"{self.prefix} {final_text}"
 
 
-    def preprocess_output(self, summary_text) -> str:
+    def preprocess_output(self, summary_text, curr_input) -> str:
         """
         Converts output to str
         """
-
-        return summary_text
+        if self.add_planning_on_concatenation:
+            all_highlights = re.findall(f"(?<={self.special_tokens_constants['highlight_start']})([\s\S]*?)(?={self.special_tokens_constants['highlight_end']})", curr_input)
+            if self.add_highlight_labels_to_planning:
+                all_highlights = [self.special_tokens_constants['highlight_start'] + h + self.special_tokens_constants['highlight_end'] for h in all_highlights]
+            highlights_concat = self.special_tokens_constants["highlight_delim"].join(all_highlights) if self.add_highlight_delim_planning else " ".join(all_highlights)
+            gold_output = self.special_tokens_constants['is_concat'] + highlights_concat + self.special_tokens_constants['is_summary'] + summary_text
+        else:
+            gold_output = summary_text
+        return gold_output
 
 def get_special_tokens_constants(is_t5_model: bool) -> dict:
     """
@@ -95,15 +104,15 @@ def get_special_tokens_constants(is_t5_model: bool) -> dict:
         # T5 model has 100 special tokens by default
         special_tokens_constants['highlight_start'] = "<extra_id_1>"
         special_tokens_constants['highlight_end'] = "<extra_id_2>"
-        special_tokens_constants['is_concatenation'] = "<extra_id_3>"
-        # special_tokens_constants['is_summary'] = "<extra_id_4>"
-        # special_tokens_constants['highlight_delimeter'] = "<extra_id_5>"
+        special_tokens_constants['is_concat'] = "<extra_id_3>"
+        special_tokens_constants['is_summary'] = "<extra_id_4>"
+        special_tokens_constants['highlight_delim'] = "<extra_id_5>"
     else:
         special_tokens_constants['highlight_start'] = "<highlight_start>"
         special_tokens_constants['highlight_end'] = "<highlight_end>"
-        special_tokens_constants['is_concatenation'] = "<is_concatenation>"
-        # special_tokens_constants['is_summary'] = "<is_summary>"
-        # special_tokens_constants['highlight_delimeter'] = "<highlight_delimeter>"
+        special_tokens_constants['is_concat'] = "<is_concat>"
+        special_tokens_constants['is_summary'] = "<is_summary>"
+        special_tokens_constants['highlight_delim'] = "<highlight_delim>"
 
     return special_tokens_constants
 

@@ -51,4 +51,4 @@ def main(config: dict, summaries_to_test_key: str):
     logging.info("Analyzing predictions...")
 
     # Extract predictions file
-    PredictionsAnalyzer(None, config['output_dir'], summac_model, metric).write_predictions_to_file(summaries_to_test, inputs, df, is_tokenized=False)
+    PredictionsAnalyzer(None, None, False, config['output_dir'], summac_model, metric).write_predictions_to_file(summaries_to_test, inputs, df, is_tokenized=False)

@@ -9,6 +9,7 @@ import sys
 from dataclasses import dataclass, field
 from typing import Optional
 import pandas as pd
+import re
 
 import datasets
 import nltk  # Here to have a nice missing dependency error message early on
@@ -130,6 +131,19 @@ class ModelArguments:
     )
     # NEW from original script
     no_repeat_ngram_size: int = field(
+        default=None
+    )
+
+    # NEW from original script (for LongT5)
+    local_radius: int = field(
+        default=None
+    )
+    # NEW from original script (for LongT5)
+    global_block_size: int = field(
+        default=None
+    )
+    # NEW from original script (for LongT5)
+    encoder_attention_type: int = field(
         default=None
     )
 
@@ -297,7 +311,14 @@ class DataTrainingArguments:
     add_planning_on_concatenation: bool = field(
         default=False
     )
-
+    # NEW from original script
+    add_highlight_delim_planning: bool = field(
+        default=True
+    )
+        # NEW from original script
+    add_highlight_labels_to_planning: bool = field(
+        default=False
+    )
 
 
     def __post_init__(self):
@@ -476,7 +497,7 @@ def main():
 
     # NEW from original script
     special_tokens_constants = get_special_tokens_constants(is_t5_model)
-    preprocessor = Preprocessor(prefix, special_tokens_constants, data_args.should_preprocess_add_highlights, data_args.should_preprocess_only_sents_with_highlights, data_args.should_preprocess_keep_only_highlights, data_args.add_planning_on_concatenation)
+    preprocessor = Preprocessor(prefix, special_tokens_constants, data_args.should_preprocess_add_highlights, data_args.should_preprocess_only_sents_with_highlights, data_args.should_preprocess_keep_only_highlights, data_args.add_planning_on_concatenation, data_args.add_highlight_delim_planning, data_args.add_highlight_labels_to_planning)
 
     # NEW from original script
     tokenizer.add_special_tokens({'additional_special_tokens': list(special_tokens_constants.values())})
@@ -593,7 +614,8 @@ def main():
                 # NEW from original script
                 curr_input = preprocessor.preprocess_input(examples['doc_text'][i], examples['highlight_spans'][i])
                 inputs.append(curr_input)
-                targets.append(examples['summary_text'][i])
+                curr_output = preprocessor.preprocess_output(examples['summary_text'][i], curr_input)
+                targets.append(curr_output)
 
         model_inputs = tokenizer(
             inputs, max_length=data_args.max_source_length, padding=padding, truncation=True)
@@ -619,10 +641,15 @@ def main():
                 curr_global_attention_mask = [0 for _ in range(len(input_ids))]
                 curr_global_attention_mask[0] = 1
 
+                tkns_with_global_attention = [preprocessor.special_tokens_constants[tkn_key] for tkn_key in ['highlight_start', 'highlight_end', 'is_summary']]
+                # ids_with_global_attention = [special_id for special_id in tokenizer.additional_special_tokens_ids if tokenizer.convert_ids_to_tokens(special_id) in tkns_with_global_attention]
+                ids_with_global_attention = tokenizer.additional_special_tokens_ids
+
+
                 if data_args.add_global_attention_on_highlights:
                     for input_id_idx, input_id in enumerate(input_ids):
                         # Put attention on highlight tokens
-                        if input_id in tokenizer.additional_special_tokens_ids:
+                        if input_id in ids_with_global_attention: #AVIVSL: play with this (regarding the other special tokens)
                             curr_global_attention_mask[input_id_idx] = 1
 
                 global_attention_mask.append(curr_global_attention_mask)
@@ -704,7 +731,18 @@ def main():
     if data_args.eval_with_summac:
         summac_model = get_summac_model()
 
-    def postprocess_text(preds, labels):
+    def postprocess_text(preds, labels, is_add_planning_on_concatenation, preprocessor, tokenizer):
+        all_special_tkns = sum([special_tkns if type(special_tkns)==list else [special_tkns] for special_tkns in tokenizer.special_tokens_map.values()], [])
+        start_summary_tkn = preprocessor.special_tokens_constants["is_summary"]
+
+        if is_add_planning_on_concatenation:
+            preds = [pred.split(start_summary_tkn)[-1] for pred in preds] # take only the part of the summary, without the concatenation
+            labels = [label.split(start_summary_tkn)[-1] for label in labels] # take only the part of the summary, without the concatenation
+
+        preds = [re.sub(r'|'.join(map(re.escape, all_special_tkns)), '', pred) for pred in preds] # remove the special tokens
+        labels = [re.sub(r'|'.join(map(re.escape, all_special_tkns)), '', label) for label in labels]
+
+
         preds = [pred.strip() for pred in preds]
         labels = [label.strip() for label in labels]
 
@@ -714,20 +752,25 @@ def main():
 
         return preds, labels
 
-    def compute_metrics(eval_preds, is_training: bool):
+    def compute_metrics(eval_preds, is_training: bool, is_add_planning_on_concatenation: bool, preprocessor=preprocessor):
         preds, labels = eval_preds
         if isinstance(preds, tuple):
             preds = preds[0]
-        decoded_preds = tokenizer.batch_decode(preds, skip_special_tokens=True)
+        
+        # if is_add_planning_on_concatenation:
+            # start_summary_tkn_id = [tkn_id for tkn_id in tokenizer.additional_special_tokens_ids if tokenizer.decode([tkn_id]) == preprocessor.special_tokens_constants["is_summary"]][0]
+
+
+        decoded_preds = tokenizer.batch_decode(preds)
         if data_args.ignore_pad_token_for_loss:
             # Replace -100 in the labels as we can't decode them.
             labels = np.where(labels != -100, labels, tokenizer.pad_token_id)
-        decoded_labels = tokenizer.batch_decode(
-            labels, skip_special_tokens=True)
+        decoded_labels = tokenizer.batch_decode(labels)
+        
 
         # Some simple post-processing
         decoded_preds, decoded_labels = postprocess_text(
-            decoded_preds, decoded_labels)
+            decoded_preds, decoded_labels, is_add_planning_on_concatenation, preprocessor, tokenizer)
 
         # NEW from original script
         result = compute_rouge_metrics(decoded_preds, decoded_labels, metric, prefix="gold")
@@ -750,8 +793,8 @@ def main():
         return result
 
     # NEW from original script (if training compute only necessary metrics, otherwise compute more)
-    compute_metrics_for_train = lambda *args, **kwargs: compute_metrics(*args, **kwargs, is_training=True)
-    compute_metrics_for_eval = lambda *args, **kwargs: compute_metrics(*args, **kwargs, is_training=False)
+    compute_metrics_for_train = lambda *args, **kwargs: compute_metrics(*args, **kwargs, is_training=True, is_add_planning_on_concatenation=data_args.add_planning_on_concatenation, preprocessor=preprocessor)
+    compute_metrics_for_eval = lambda *args, **kwargs: compute_metrics(*args, **kwargs, is_training=False, is_add_planning_on_concatenation=data_args.add_planning_on_concatenation, preprocessor=preprocessor)
 
     # Initialize our Trainer
     trainer = Seq2SeqTrainer(
@@ -841,7 +884,7 @@ def main():
                 print(result)
 
                 # NEW from original script (per sample prediction)
-                PredictionsAnalyzer(tokenizer, training_args.output_dir, summac_model, metric).write_predictions_to_file(predict_results.predictions, prep_predict_dataset, pd.DataFrame(predict_dataset.to_dict()))
+                PredictionsAnalyzer(tokenizer, preprocessor, data_args.add_planning_on_concatenation, training_args.output_dir, summac_model, metric).write_predictions_to_file(predict_results.predictions, prep_predict_dataset, pd.DataFrame(predict_dataset.to_dict()))
 
     kwargs = {"finetuned_from": model_args.model_name_or_path,
               "tasks": "summarization"}
