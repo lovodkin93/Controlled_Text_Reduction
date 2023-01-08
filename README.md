@@ -73,6 +73,10 @@ You have different options:
 4. To test a model which receives as input only highlights, follow `test_led_only_highlights.json` (or `eval_led_only_highlights.json` for the devset).
 5. To run a mixed experiment, where highlights are paired with a different summary of the same document, follow `test_led_mixed.json`.
 
+## Huggingface
+We also uploaded our best model to huggingface, for an easy employment.
+Please refer to: https://huggingface.co/biu-nlp/led-base-controlled-text-reduction
+
 Citation
 ========
 If you find this repository useful in your research, please cite the following paper:
