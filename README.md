@@ -81,15 +81,21 @@ Citation
 ========
 If you find this repository useful in your research, please cite the following paper:
 ```
-@misc{https://doi.org/10.48550/arxiv.2210.13449,
-  doi = {10.48550/ARXIV.2210.13449},
-  url = {https://arxiv.org/abs/2210.13449},
-  author = {Slobodkin, Aviv and Roit, Paul and Hirsch, Eran and Ernst, Ori and Dagan, Ido},
-  keywords = {Computation and Language (cs.CL), FOS: Computer and information sciences, FOS: Computer and information sciences},
-  title = {Controlled Text Reduction},
-  publisher = {arXiv},
-  year = {2022},
-  copyright = {Creative Commons Zero v1.0 Universal}
+@inproceedings{slobodkin-etal-2022-controlled,
+    title = "Controlled Text Reduction",
+    author = "Slobodkin, Aviv  and
+      Roit, Paul  and
+      Hirsch, Eran  and
+      Ernst, Ori  and
+      Dagan, Ido",
+    booktitle = "Proceedings of the 2022 Conference on Empirical Methods in Natural Language Processing",
+    month = dec,
+    year = "2022",
+    address = "Abu Dhabi, United Arab Emirates",
+    publisher = "Association for Computational Linguistics",
+    url = "https://aclanthology.org/2022.emnlp-main.385",
+    pages = "5699--5715",
+    abstract = "Producing a reduced version of a source text, as in generic or focused summarization, inherently involves two distinct subtasks: deciding on targeted content and generating a coherent text conveying it. While some popular approaches address summarization as a single end-to-end task, prominent works support decomposed modeling for individual subtasks. Further, semi-automated text reduction is also very appealing, where users may identify targeted content while models would generate a corresponding coherent summary.In this paper, we focus on the second subtask, of generating coherent text given pre-selected content. Concretely, we formalize \textit{Controlled Text Reduction} as a standalone task, whose input is a source text with marked spans of targeted content ({``}highlighting{''}).A model then needs to generate a coherent text that includes all and only the target information.We advocate the potential of such models, both for modular fully-automatic summarization, as well as for semi-automated human-in-the-loop use cases.Facilitating proper research, we crowdsource high-quality dev and test datasets for the task. Further, we automatically generate a larger {``}silver{''} training dataset from available summarization benchmarks, leveraging a pretrained summary-source alignment model.Finally, employing these datasets, we present a supervised baseline model, showing promising results and insightful analyses.",
 }
 
 ```
