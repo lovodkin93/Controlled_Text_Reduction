@@ -22,7 +22,7 @@ python -m spacy download en_core_web_sm
 ## Preprocess Data
 The next step is to preprocess the data. To do that, run:
 ```
-python -m src.run_experiments configs/preprocess/<CONFIG_PREPROCESS_FILE>
+python -m src.preprocess_from_highlight_rows_to_document_rows configs/preprocess/<CONFIG_PREPROCESS_FILE>
 ```
 You can find examples of `<CONFIG_PREPROCESS_FILE>` under `configs/preprocess/`
 Some note about the `<CONFIG_PREPROCESS_FILE>`:
